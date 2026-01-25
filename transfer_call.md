@@ -58,8 +58,8 @@ Once you answer the call and are talking to the agent:
 
 ### Default Transfer
 Say: **"Transfer me."** or **"Transfer me to a live agent."**
-*   **Action**: Agent transfers you to the default configured number (`+918197052831`).
-*   **Mechanism**: The agent sends a SIP REFER to `sip:+918197052831@<your-sip-domain>`.
+*   **Action**: Agent transfers you to the default configured number (`+91XXXXXXXXXX`).
+*   **Mechanism**: The agent sends a SIP REFER to `sip:+91XXXXXXXXXX@<your-sip-domain>`.
 
 ### Custom Transfer
 Say: **"Transfer me to +1 555 000 1234."**

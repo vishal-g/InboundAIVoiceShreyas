@@ -8,6 +8,8 @@ This project provides a production-ready solution for making outbound AI phone c
 |------|-------------|
 | `agent.py` | The main AI worker. It runs in the background, waits for dispatch jobs, and places outbound calls. |
 | `make_call.py` | A utility script to trigger calls. It dispatches the agent to a unique room with the target phone number. |
+| `setup_trunk.py` | Script to configure the LiveKit SIP Trunk with Vobiz credentials. |
+| `transfer_call.md` | Guide for configuring and using SIP transfers. |
 | `.env.example` | Template for environment variables and secrets. |
 | `requirements.txt` | List of Python dependencies. |
 

@@ -13,7 +13,7 @@ from livekit.plugins import (
     silero,
 )
 from livekit.agents import llm
-from typing import Annotated
+from typing import Annotated, Optional
 
 # Load environment variables
 load_dotenv(".env")
@@ -54,10 +54,9 @@ class TransferFunctions(llm.ToolContext):
         self.phone_number = phone_number
 
     @llm.function_tool(description="Transfer the call to a human support agent or another phone number.")
-    async def transfer_call(self, destination: str = None):
+    async def transfer_call(self, destination: Optional[str] = None):
         """
-        Args:
-            destination: The phone number to transfer to (e.g. +1... ). Defaults to environment configured number if not provided.
+        Transfer the call.
         """
         if destination is None:
             destination = os.getenv("DEFAULT_TRANSFER_NUMBER")

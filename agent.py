@@ -40,7 +40,7 @@ def get_live_config():
         "agent_instructions": config.get("agent_instructions", ""),
         "stt_min_endpointing_delay": config.get("stt_min_endpointing_delay", 0.6),
         "llm_model": config.get("llm_model", "gpt-4o-mini"),
-        "tts_voice": config.get("tts_voice", "rohan"),
+        "tts_voice": config.get("tts_voice", "kavya"),
         **config
     }
 
@@ -329,6 +329,9 @@ async def entrypoint(ctx: JobContext):
             model="bulbul:v3",
             speaker=tts_voice,           # Dynamically set from UI config
             speech_sample_rate=8000,
+            streaming=True,
+            min_buffer_size=40,
+            enable_preprocessing=True,
         ),
         turn_detection="stt",
         min_endpointing_delay=0.15,     # Raised from 0.07 — stops false self-interruptions

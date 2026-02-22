@@ -27,7 +27,7 @@ def read_config():
         "agent_instructions": get_val("agent_instructions", "AGENT_INSTRUCTIONS", "Say exactly this phrase without any extra thinking: 'Namaste! Welcome to Daisy's Med Spa. Main aapki kaise madad kar sakti hoon? I can answer questions about our treatments or help you book an appointment.'"),
         "stt_min_endpointing_delay": float(get_val("stt_min_endpointing_delay", "STT_MIN_ENDPOINTING_DELAY", 0.6)),
         "llm_model": get_val("llm_model", "LLM_MODEL", "gpt-4o-mini"),
-        "tts_voice": get_val("tts_voice", "TTS_VOICE", "rohan"),
+        "tts_voice": get_val("tts_voice", "TTS_VOICE", "kavya"),
         "livekit_url": get_val("livekit_url", "LIVEKIT_URL", ""),
         "sip_trunk_id": get_val("sip_trunk_id", "SIP_TRUNK_ID", ""),
         "livekit_api_key": get_val("livekit_api_key", "LIVEKIT_API_KEY", ""),
@@ -114,6 +114,7 @@ async def get_dashboard():
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Voice Synthesis (Sarvam bulbul:v3)</label>
                             <select id="tts_voice" class="mt-1 block w-1/2 pl-3 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                                <option value="kavya" {'selected' if config.get('tts_voice') == 'kavya' else ''}>Kavya (Fastest Streaming)</option>
                                 <option value="rohan" {'selected' if config.get('tts_voice') == 'rohan' else ''}>Rohan (Male, Balanced)</option>
                                 <option value="priya" {'selected' if config.get('tts_voice') == 'priya' else ''}>Priya (Female)</option>
                                 <option value="shubh" {'selected' if config.get('tts_voice') == 'shubh' else ''}>Shubh (Male)</option>

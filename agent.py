@@ -28,18 +28,20 @@ CONFIG_FILE = "config.json"
 
 def get_live_config():
     """Reads the latest config.json to inject dynamic prompts and VAD tuning."""
+    config = {}
     if os.path.exists(CONFIG_FILE):
         try:
             with open(CONFIG_FILE, "r") as f:
-                return json.load(f)
+                config = json.load(f)
         except Exception as e:
             logger.error(f"Failed to read config.json, falling back: {e}")
             
     return {
-        "agent_instructions": "You are a helpful assistant.",
-        "stt_min_endpointing_delay": 0.6,
-        "llm_model": "gpt-4o-mini",
-        "tts_voice": "rohan"
+        "agent_instructions": config.get("agent_instructions", ""),
+        "stt_min_endpointing_delay": config.get("stt_min_endpointing_delay", 0.6),
+        "llm_model": config.get("llm_model", "gpt-4o-mini"),
+        "tts_voice": config.get("tts_voice", "rohan"),
+        **config
     }
 
 def get_ist_time_context():
@@ -325,7 +327,7 @@ async def entrypoint(ctx: JobContext):
         tts=sarvam.TTS(
             target_language_code="hi-IN",
             model="bulbul:v3",
-            speaker="rohan",           # Valid speaker for bulbul:v3
+            speaker=tts_voice,           # Dynamically set from UI config
             speech_sample_rate=8000,
         ),
         turn_detection="stt",

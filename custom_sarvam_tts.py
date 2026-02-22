@@ -98,6 +98,8 @@ class SarvamChunkedStream(tts.ChunkedStream):
 
         client = AsyncSarvamAI(api_subscription_key=t._api_key)
 
+        pushed_any = False
+
         async with client.text_to_speech_streaming.connect(model="bulbul:v3") as ws:
             await ws.configure(
                 target_language_code=t._language,
@@ -111,11 +113,17 @@ class SarvamChunkedStream(tts.ChunkedStream):
 
             async for message in ws:
                 if isinstance(message, AudioOutput):
-                    output_emitter.push(base64.b64decode(message.data.audio))
+                    audio_bytes = base64.b64decode(message.data.audio)
+                    if audio_bytes:
+                        output_emitter.push(audio_bytes)
+                        pushed_any = True
                 elif isinstance(message, EventResponse):
                     if message.data.event_type == "final":
                         output_emitter.flush()
                         break
+        
+        if not pushed_any:
+            logger.error(f"[SarvamTTS] Sarvam returned ZERO audio bytes for text: '{txt[:80]}'")
 
 
 class SarvamSynthStream(tts.SynthesizeStream):
@@ -136,26 +144,28 @@ class SarvamSynthStream(tts.SynthesizeStream):
             mime_type="audio/pcm",
         )
 
-        # Step 1: Collect the ENTIRE text from the input channel first
+        # Collect ALL tokens — don't break early on FlushSentinel
         full_text_parts: list[str] = []
 
         async for data in self._input_ch:
-            if isinstance(data, self._FlushSentinel):
-                continue  # ignore flush signals, we'll handle the full text at once
-            elif isinstance(data, str):
+            if isinstance(data, str):
                 full_text_parts.append(data)
+            # FlushSentinel = LLM done streaming, but keep collecting
+            # until the channel itself closes (loop ends naturally)
 
         full_text = "".join(full_text_parts).strip()
 
         if not full_text:
+            logger.warning("[SarvamTTS] _run() got empty text — nothing to synthesize")
             return
 
-        logger.debug(f"[SarvamTTS] Synthesising full response: '{full_text[:80]}'")
+        logger.debug(f"[SarvamTTS] Synthesising full response: '{full_text[:120]}'")
 
         # Step 2: ONE segment for the entire response
         segment_id = utils.shortuuid()
         output_emitter.start_segment(segment_id=segment_id)
 
+        pushed_any = False
         try:
             client = AsyncSarvamAI(api_subscription_key=t._api_key)
             async with client.text_to_speech_streaming.connect(model="bulbul:v3") as ws:
@@ -171,9 +181,17 @@ class SarvamSynthStream(tts.SynthesizeStream):
 
                 async for message in ws:
                     if isinstance(message, AudioOutput):
-                        output_emitter.push(base64.b64decode(message.data.audio))
+                        audio_bytes = base64.b64decode(message.data.audio)
+                        if audio_bytes:
+                            output_emitter.push(audio_bytes)
+                            pushed_any = True
                     elif isinstance(message, EventResponse):
                         if message.data.event_type == "final":
                             break
         finally:
             output_emitter.end_segment()
+
+        if not pushed_any:
+            logger.error(
+                f"[SarvamTTS] Sarvam returned ZERO audio bytes for text: '{full_text[:80]}'"
+            )

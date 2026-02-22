@@ -144,19 +144,26 @@ class SarvamSynthStream(tts.SynthesizeStream):
             mime_type="audio/pcm",
         )
 
-        # Collect ALL tokens — don't break early on FlushSentinel
-        full_text_parts: list[str] = []
+        # Start collecting tokens IMMEDIATELY into a buffer via background task
+        collected: list[str] = []
+        collection_done = asyncio.Event()
 
-        async for data in self._input_ch:
-            if isinstance(data, str):
-                full_text_parts.append(data)
-            # FlushSentinel = LLM done streaming, but keep collecting
-            # until the channel itself closes (loop ends naturally)
+        async def _collect_input() -> None:
+            async for data in self._input_ch:
+                if isinstance(data, str):
+                    collected.append(data)
+            collection_done.set()
 
-        full_text = "".join(full_text_parts).strip()
+        collection_task = asyncio.create_task(_collect_input())
+
+        # Wait for ALL tokens to arrive
+        await collection_done.wait()
+        await collection_task
+
+        full_text = "".join(collected).strip()
 
         if not full_text:
-            logger.warning("[SarvamTTS] _run() got empty text — nothing to synthesize")
+            logger.warning("[SarvamTTS] No text collected from input_ch — nothing to synthesize")
             return
 
         logger.debug(f"[SarvamTTS] Synthesising full response: '{full_text[:120]}'")

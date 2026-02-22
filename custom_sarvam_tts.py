@@ -72,14 +72,32 @@ async def _call_sarvam(t: SarvamStreamingTTS, text: str, output_emitter: tts.Aud
             await ws.flush()
 
             async for message in ws:
-                if isinstance(message, AudioOutput):
+                # Log the actual type so we know what's coming back
+                logger.debug(f"[SarvamTTS] message type={type(message).__name__}, value={str(message)[:200]}")
+
+                # Handle if it's a raw dict (some SDK versions return dicts)
+                if isinstance(message, dict):
+                    if message.get("type") == "audio":
+                        audio_b64 = message.get("data", {}).get("audio") or message.get("audio", "")
+                        if audio_b64:
+                            output_emitter.push(base64.b64decode(audio_b64))
+                            pushed_any = True
+                    elif message.get("type") == "final" or message.get("event_type") == "final":
+                        break
+                # Handle typed SDK objects
+                elif isinstance(message, AudioOutput):
                     audio_bytes = base64.b64decode(message.data.audio)
                     if audio_bytes:
                         output_emitter.push(audio_bytes)
                         pushed_any = True
                 elif isinstance(message, EventResponse):
-                    if message.data.event_type == "final":
+                    if hasattr(message, 'data') and message.data.event_type == "final":
                         break
+                # Catch-all: try to extract audio from any unknown type
+                else:
+                    raw = vars(message) if hasattr(message, '__dict__') else {}
+                    logger.debug(f"[SarvamTTS] Unknown message vars: {raw}")
+
     finally:
         output_emitter.end_segment()
 

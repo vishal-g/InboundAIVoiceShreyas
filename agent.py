@@ -4,6 +4,7 @@ import logging
 import certifi
 import pytz
 import re
+import random
 import asyncio
 from datetime import datetime
 from dotenv import load_dotenv
@@ -21,7 +22,8 @@ from livekit.agents import (
     cli,
     llm,
 )
-from livekit.plugins import openai, sarvam
+from livekit.plugins import openai, sarvam, silero
+from custom_sarvam_tts import SarvamStreamingTTS
 from typing import Annotated
 
 CONFIG_FILE = "config.json"
@@ -324,11 +326,12 @@ async def entrypoint(ctx: JobContext):
         llm=openai.LLM(
             model=llm_model,     # Dynamic LLM choice from dashboard
         ),
-        tts=sarvam.TTS(
-            target_language_code="hi-IN",
-            model="bulbul:v3",
+        tts=SarvamStreamingTTS(
             speaker=tts_voice,           # Dynamically set from UI config
-            speech_sample_rate=8000,
+            language="hi-IN",
+            pace=1.1,
+            min_buffer_size=50,
+            sample_rate=8000,
         ),
         turn_detection="stt",
         min_endpointing_delay=0.15,     # Raised from 0.07 — stops false self-interruptions
@@ -342,6 +345,21 @@ async def entrypoint(ctx: JobContext):
             close_on_disconnect=False,
         ),
     )
+
+    FILLERS = [
+        "Haan, ek second...",
+        "Ji, dekhte hain...",
+        "Bilkul, abhi batata hoon...",
+    ]
+
+    @session.on("user_speech_committed")
+    def _on_speech_committed(ev):
+        transcript = ev.user_transcript.strip()
+        if len(transcript) > 3:
+            filler = random.choice(FILLERS)
+            asyncio.create_task(
+                session.say(filler, add_to_chat_ctx=False)
+            )
 
     logger.info("[AGENT] Session live — waiting for caller audio.")
     call_start_time = datetime.now()

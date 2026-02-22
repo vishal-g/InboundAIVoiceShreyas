@@ -1,4 +1,4 @@
-# custom_sarvam_tts.py — CORRECT for livekit-agents 1.4.2
+# custom_sarvam_tts.py — FINAL, matches livekit-agents 1.4.2 exactly
 
 from __future__ import annotations
 
@@ -10,12 +10,10 @@ import numpy as np
 
 from sarvamai import AsyncSarvamAI, AudioOutput, EventResponse
 
-# ✅ CORRECT imports — confirmed from ElevenLabs plugin source in 1.4.x
-from livekit.agents import APIConnectOptions, tts, utils
+from livekit.agents import APIConnectOptions, tts, utils, tokenize
 from livekit.agents.types import DEFAULT_API_CONNECT_OPTIONS
 
 logger = logging.getLogger("sarvam-streaming-tts")
-
 SARVAM_API_KEY = os.environ.get("SARVAM_API_KEY", "")
 
 VALID_SPEAKERS_V3 = {
@@ -47,62 +45,58 @@ class SarvamStreamingTTS(tts.TTS):
         self._min_buffer_size = min_buffer_size
         self._sample_rate     = sample_rate
         self._api_key         = api_key or SARVAM_API_KEY
+        self._streams: set[SarvamSynthStream] = set()
 
         if not self._api_key:
             raise ValueError("SARVAM_API_KEY is not set")
         if self._speaker not in VALID_SPEAKERS_V3:
-            raise ValueError(
-                f"Speaker '{self._speaker}' invalid for bulbul:v3. "
-                f"Valid: {', '.join(sorted(VALID_SPEAKERS_V3))}"
-            )
+            raise ValueError(f"Speaker '{self._speaker}' invalid for bulbul:v3.")
 
-    # ✅ synthesize() for single-shot text
     def synthesize(
         self,
         text: str,
         *,
         conn_options: APIConnectOptions = DEFAULT_API_CONNECT_OPTIONS,
     ) -> "SarvamChunkedStream":
-        return SarvamChunkedStream(
-            tts=self,
-            input_text=text,
-            conn_options=conn_options,
-        )
+        return SarvamChunkedStream(tts=self, input_text=text, conn_options=conn_options)
 
-    # ✅ stream() for streaming mode — called by LiveKit agent pipeline
     def stream(
         self,
         *,
         conn_options: APIConnectOptions = DEFAULT_API_CONNECT_OPTIONS,
     ) -> "SarvamSynthStream":
-        return SarvamSynthStream(
-            tts=self,
-            conn_options=conn_options,
-        )
+        stream = SarvamSynthStream(tts=self, conn_options=conn_options)
+        self._streams.add(stream)
+        return stream
+
+    async def aclose(self) -> None:
+        for stream in list(self._streams):
+            await stream.aclose()
+        self._streams.clear()
 
 
-# ✅ NEW signature: _run(self, output_emitter) — required in livekit-agents 1.4.x
 class SarvamChunkedStream(tts.ChunkedStream):
-    """For single-shot synthesize() calls"""
+    """Used for session.say() and direct synthesize() calls"""
 
     def __init__(self, *, tts: SarvamStreamingTTS, input_text: str, conn_options: APIConnectOptions):
         super().__init__(tts=tts, input_text=input_text, conn_options=conn_options)
         self._tts_ref = tts
 
     async def _run(self, output_emitter: tts.AudioEmitter) -> None:
+        t   = self._tts_ref
         txt = self._input_text.strip()
         if not txt:
             return
 
-        t      = self._tts_ref
-        client = AsyncSarvamAI(api_subscription_key=t._api_key)
-
+        request_id = utils.shortuuid()
         output_emitter.initialize(
-            request_id=utils.shortuuid(),
+            request_id=request_id,
             sample_rate=t._sample_rate,
             num_channels=1,
             mime_type="audio/pcm",
         )
+
+        client = AsyncSarvamAI(api_subscription_key=t._api_key)
 
         async with client.text_to_speech_streaming.connect(model="bulbul:v3") as ws:
             await ws.configure(
@@ -117,8 +111,7 @@ class SarvamChunkedStream(tts.ChunkedStream):
 
             async for message in ws:
                 if isinstance(message, AudioOutput):
-                    pcm_bytes = base64.b64decode(message.data.audio)
-                    output_emitter.push(pcm_bytes)
+                    output_emitter.push(base64.b64decode(message.data.audio))
                 elif isinstance(message, EventResponse):
                     if message.data.event_type == "final":
                         output_emitter.flush()
@@ -126,38 +119,61 @@ class SarvamChunkedStream(tts.ChunkedStream):
 
 
 class SarvamSynthStream(tts.SynthesizeStream):
-    """For streaming mode — used by the agent pipeline"""
+    """Used by agent pipeline for streaming TTS during conversation"""
 
     def __init__(self, *, tts: SarvamStreamingTTS, conn_options: APIConnectOptions):
         super().__init__(tts=tts, conn_options=conn_options)
         self._tts_ref = tts
+        self._segments_ch = utils.aio.Chan[tokenize.WordStream]()
 
     async def _run(self, output_emitter: tts.AudioEmitter) -> None:
-        t      = self._tts_ref
-        client = AsyncSarvamAI(api_subscription_key=t._api_key)
+        t          = self._tts_ref
+        request_id = utils.shortuuid()
 
         output_emitter.initialize(
-            request_id=utils.shortuuid(),
+            request_id=request_id,
             sample_rate=t._sample_rate,
             num_channels=1,
             stream=True,
             mime_type="audio/pcm",
         )
 
-        # Collect streamed text tokens from the agent pipeline
-        async for input_item in self._input_ch:
-            # Each input_item is either a str token or FlushSentinel
-            if isinstance(input_item, self._FlushSentinel):
-                continue  # handled below per-segment
+        async def _tokenize_input() -> None:
+            """Convert incoming text stream into word-level streams per sentence"""
+            async for data in self._input_ch:
+                if isinstance(data, self._FlushSentinel):
+                    self._segments_ch.close()
+                    return
+                word_stream = tokenize.basic.SentenceTokenizer().stream()
+                self._segments_ch.send_nowait(word_stream)
+                if isinstance(data, str):
+                    word_stream.push_text(data)
+                word_stream.end_input()
 
-            txt = input_item.strip() if isinstance(input_item, str) else ""
-            if not txt:
-                continue
+        async def _process_segments() -> None:
+            """Synthesise each sentence segment via Sarvam WebSocket"""
+            async for word_stream in self._segments_ch:
+                await _synthesize_segment(word_stream, output_emitter)
 
+        async def _synthesize_segment(
+            word_stream: tokenize.WordStream,
+            emitter: tts.AudioEmitter,
+        ) -> None:
             segment_id = utils.shortuuid()
-            output_emitter.start_segment(segment_id=segment_id)
+            emitter.start_segment(segment_id=segment_id)
 
-            logger.debug(f"[SarvamTTS] Streaming segment: '{txt[:60]}'")
+            # Collect full sentence text from the word stream
+            sentence = ""
+            async for token in word_stream:
+                sentence += token.token
+
+            sentence = sentence.strip()
+            if not sentence:
+                return
+
+            logger.debug(f"[SarvamTTS] Synthesising: '{sentence[:60]}'")
+
+            client = AsyncSarvamAI(api_subscription_key=t._api_key)
 
             async with client.text_to_speech_streaming.connect(model="bulbul:v3") as ws:
                 await ws.configure(
@@ -167,18 +183,25 @@ class SarvamSynthStream(tts.SynthesizeStream):
                     min_buffer_size=t._min_buffer_size,
                     output_audio_codec="pcm",
                 )
-                await ws.convert(txt)
+                await ws.convert(sentence)
                 await ws.flush()
 
                 chunk_count = 0
                 async for message in ws:
                     if isinstance(message, AudioOutput):
-                        pcm_bytes = base64.b64decode(message.data.audio)
-                        output_emitter.push(pcm_bytes)
+                        emitter.push(base64.b64decode(message.data.audio))
                         chunk_count += 1
                         if chunk_count == 1:
-                            logger.debug("[SarvamTTS] ✅ First chunk delivered")
+                            logger.debug("[SarvamTTS] ✅ First chunk pushed")
                     elif isinstance(message, EventResponse):
                         if message.data.event_type == "final":
-                            output_emitter.end_input()
                             break
+
+        tasks = [
+            asyncio.create_task(_tokenize_input()),
+            asyncio.create_task(_process_segments()),
+        ]
+        try:
+            await asyncio.gather(*tasks)
+        finally:
+            await utils.aio.gracefully_cancel(*tasks)

@@ -33,7 +33,7 @@ class SarvamStreamingTTS(tts.TTS):
         language: str = "hi-IN",
         pace: float = 1.1,
         min_buffer_size: int = 50,
-        sample_rate: int = 8000,
+        sample_rate: int = 22050,
         api_key: str | None = None,
     ):
         super().__init__(
@@ -108,8 +108,7 @@ class SarvamChunkedStream(tts.ChunkedStream):
                 speaker=t._speaker,
                 pace=t._pace,
                 min_buffer_size=t._min_buffer_size,
-                output_audio_codec="linear16",
-                sample_rate=t._sample_rate,
+                output_audio_codec="pcm",
             )
             await ws.convert(txt)
             await ws.flush()
@@ -190,8 +189,7 @@ class SarvamSynthStream(tts.SynthesizeStream):
                     speaker=t._speaker,
                     pace=t._pace,
                     min_buffer_size=t._min_buffer_size,
-                    output_audio_codec="linear16",
-                    sample_rate=t._sample_rate,
+                    output_audio_codec="pcm",
                 )
                 await ws.convert(full_text)
                 await ws.flush()

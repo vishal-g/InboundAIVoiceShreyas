@@ -16,3 +16,5 @@ uvicorn>=0.28.0
 pytz>=2024.1
 httpx
 supabase
+sarvamai>=1.0.0
+numpy>=1.26.0

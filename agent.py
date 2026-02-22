@@ -376,6 +376,38 @@ async def entrypoint(ctx: JobContext):
     logger.info("[AGENT] Session live — waiting for caller audio.")
     call_start_time = datetime.now()
 
+    # ── Start call recording via LiveKit Egress ─────────────────────────────
+    egress_id = None
+    lk_api_for_egress = None
+    try:
+        lk_api_for_egress = api.LiveKitAPI(
+            url=os.environ.get("LIVEKIT_URL", ""),
+            api_key=os.environ.get("LIVEKIT_API_KEY", ""),
+            api_secret=os.environ.get("LIVEKIT_API_SECRET", ""),
+        )
+        egress_info = await lk_api_for_egress.egress.start_room_composite_egress(
+            api.RoomCompositeEgressRequest(
+                room_name=ctx.room.name,
+                audio_only=True,
+                file=api.EncodedFileOutput(
+                    filepath="/recordings/{room_name}-{time}.mp3",
+                    file_type=api.EncodedFileType.MP3,
+                    s3=api.S3Upload(
+                        access_key=os.environ.get("AWS_ACCESS_KEY_ID", ""),
+                        secret=os.environ.get("AWS_SECRET_ACCESS_KEY", ""),
+                        bucket=os.environ.get("LIVEKIT_RECORDINGS_BUCKET", ""),
+                        region=os.environ.get("AWS_REGION", "ap-south-1"),
+                    ) if os.environ.get("LIVEKIT_RECORDINGS_BUCKET") else None,
+                ),
+            )
+        )
+        egress_id = egress_info.egress_id
+        logger.info(f"[RECORDING] Egress started: {egress_id}")
+    except Exception as e:
+        logger.warning(f"[RECORDING] Could not start egress (no S3 configured?): {e}")
+        if lk_api_for_egress:
+            await lk_api_for_egress.aclose()
+
     @session.on("agent_speech_started")
     def _agent_speech_started(ev):
         global agent_is_speaking
@@ -493,12 +525,34 @@ async def entrypoint(ctx: JobContext):
             logger.error(f"[SHUTDOWN] Could not read chat history: {e}")
             transcript_text = "unavailable"
         
+        # ── Stop Egress Recording ────────────────────────────────────────────────
+        recording_url = ""
+        if egress_id and lk_api_for_egress:
+            try:
+                stop_info = await lk_api_for_egress.egress.stop_egress(
+                    api.StopEgressRequest(egress_id=egress_id)
+                )
+                # Try to extract the download URL from file results
+                for f in (stop_info.file_results or []):
+                    if f.download_url:
+                        recording_url = f.download_url
+                        break
+                logger.info(f"[RECORDING] Egress stopped. URL: {recording_url or '(no URL yet — may still be processing)'}")
+            except Exception as e:
+                logger.warning(f"[RECORDING] Could not stop egress: {e}")
+            finally:
+                try:
+                    await lk_api_for_egress.aclose()
+                except Exception:
+                    pass
+
         from db import save_call_log
         save_call_log(
             phone=caller_phone,
             duration=duration,
             transcript=transcript_text,
-            summary=booking_status_msg
+            summary=booking_status_msg,
+            recording_url=recording_url,
         )
 
     ctx.add_shutdown_callback(unified_shutdown_hook)

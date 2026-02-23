@@ -394,6 +394,9 @@ async def entrypoint(ctx: JobContext):
     call_start_time = datetime.now()
 
     # ── Start call recording via LiveKit Egress ─────────────────────────────
+    # LiveKit Cloud stores the file automatically and returns a download URL.
+    # If you are self-hosted, set AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY /
+    # LIVEKIT_RECORDINGS_BUCKET in your environment to use S3 instead.
     egress_id = None
     lk_api_for_egress = None
     try:
@@ -402,28 +405,40 @@ async def entrypoint(ctx: JobContext):
             api_key=os.environ.get("LIVEKIT_API_KEY", ""),
             api_secret=os.environ.get("LIVEKIT_API_SECRET", ""),
         )
+        # Build output — prefer S3 if configured, else rely on LiveKit Cloud storage
+        s3_bucket = os.environ.get("LIVEKIT_RECORDINGS_BUCKET", "")
+        file_output = api.EncodedFileOutput(
+            filepath=f"recordings/{ctx.room.name}.mp3",
+            file_type=api.EncodedFileType.MP3,
+        )
+        if s3_bucket:
+            file_output = api.EncodedFileOutput(
+                filepath=f"recordings/{ctx.room.name}.mp3",
+                file_type=api.EncodedFileType.MP3,
+                s3=api.S3Upload(
+                    access_key=os.environ.get("AWS_ACCESS_KEY_ID", ""),
+                    secret=os.environ.get("AWS_SECRET_ACCESS_KEY", ""),
+                    bucket=s3_bucket,
+                    region=os.environ.get("AWS_REGION", "ap-south-1"),
+                ),
+            )
         egress_info = await lk_api_for_egress.egress.start_room_composite_egress(
             api.RoomCompositeEgressRequest(
                 room_name=ctx.room.name,
                 audio_only=True,
-                file=api.EncodedFileOutput(
-                    filepath="/recordings/{room_name}-{time}.mp3",
-                    file_type=api.EncodedFileType.MP3,
-                    s3=api.S3Upload(
-                        access_key=os.environ.get("AWS_ACCESS_KEY_ID", ""),
-                        secret=os.environ.get("AWS_SECRET_ACCESS_KEY", ""),
-                        bucket=os.environ.get("LIVEKIT_RECORDINGS_BUCKET", ""),
-                        region=os.environ.get("AWS_REGION", "ap-south-1"),
-                    ) if os.environ.get("LIVEKIT_RECORDINGS_BUCKET") else None,
-                ),
+                file=file_output,
             )
         )
         egress_id = egress_info.egress_id
         logger.info(f"[RECORDING] Egress started: {egress_id}")
     except Exception as e:
-        logger.warning(f"[RECORDING] Could not start egress (no S3 configured?): {e}")
+        logger.warning(f"[RECORDING] Could not start egress: {e}")
         if lk_api_for_egress:
-            await lk_api_for_egress.aclose()
+            try:
+                await lk_api_for_egress.aclose()
+            except Exception:
+                pass
+            lk_api_for_egress = None
 
     @session.on("agent_speech_started")
     def _agent_speech_started(ev):
@@ -570,6 +585,7 @@ async def entrypoint(ctx: JobContext):
             transcript=transcript_text,
             summary=booking_status_msg,
             recording_url=recording_url,
+            caller_name=agent_tools.caller_name or "",
         )
 
     ctx.add_shutdown_callback(unified_shutdown_hook)

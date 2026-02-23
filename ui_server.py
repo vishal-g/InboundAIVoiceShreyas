@@ -123,6 +123,48 @@ async def api_get_stats():
         logger.error(f"Error fetching stats: {e}")
         return {"total_calls": 0, "total_bookings": 0, "avg_duration": 0, "booking_rate": 0}
 
+@app.get("/api/contacts")
+async def api_get_contacts():
+    """CRM endpoint — groups call_logs by phone number, deduplicates into contacts."""
+    config = read_config()
+    os.environ["SUPABASE_URL"] = config.get("supabase_url", "")
+    os.environ["SUPABASE_KEY"] = config.get("supabase_key", "")
+    try:
+        from supabase import create_client
+        supabase = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
+        res = supabase.table("call_logs") \
+            .select("phone_number, caller_name, summary, created_at") \
+            .order("created_at", desc=True) \
+            .limit(500) \
+            .execute()
+        rows = res.data or []
+
+        # Deduplicate by phone number
+        contacts: dict = {}
+        for r in rows:
+            phone = r.get("phone_number") or "unknown"
+            if phone not in contacts:
+                contacts[phone] = {
+                    "phone_number": phone,
+                    "caller_name": r.get("caller_name") or "",
+                    "total_calls": 0,
+                    "last_seen": r.get("created_at"),
+                    "is_booked": False,
+                }
+            c = contacts[phone]
+            c["total_calls"] += 1
+            # Use the most recent non-empty name
+            if not c["caller_name"] and r.get("caller_name"):
+                c["caller_name"] = r["caller_name"]
+            # Mark booked if any call had a confirmed booking
+            if r.get("summary") and "Confirmed" in r.get("summary", ""):
+                c["is_booked"] = True
+
+        return sorted(contacts.values(), key=lambda x: x["last_seen"] or "", reverse=True)
+    except Exception as e:
+        logger.error(f"Error fetching contacts: {e}")
+        return []
+
 # ── Main Dashboard HTML ────────────────────────────────────────────────────────
 
 @app.get("/", response_class=HTMLResponse)
@@ -300,6 +342,7 @@ async def get_dashboard():
     <div class="nav-item" onclick="goTo('credentials', this)"><span class="icon">🔑</span> API Credentials</div>
     <div class="nav-section" style="margin-top:12px;">Data</div>
     <div class="nav-item" onclick="goTo('logs', this); loadLogs();"><span class="icon">📞</span> Call Logs</div>
+    <div class="nav-item" onclick="goTo('crm', this); loadCRM();"><span class="icon">👥</span> CRM Contacts</div>
   </div>
   <div class="sidebar-footer">
     <span class="status-dot"></span>Agent Online
@@ -402,9 +445,14 @@ async def get_dashboard():
       <div class="form-group" style="max-width:360px;">
         <label>OpenAI Model</label>
         <select id="llm_model">
-          <option value="gpt-4o-mini" {sel('llm_model','gpt-4o-mini')}>gpt-4o-mini — Fastest, Default</option>
-          <option value="gpt-4o" {sel('llm_model','gpt-4o')}>gpt-4o — Smartest, Slower</option>
-          <option value="gpt-4-turbo" {sel('llm_model','gpt-4-turbo')}>gpt-4-turbo</option>
+          <option value="gpt-4o-mini" {sel('llm_model','gpt-4o-mini')}>gpt-4o-mini — Fast &amp; Cheap (Default)</option>
+          <option value="gpt-4o" {sel('llm_model','gpt-4o')}>gpt-4o — Balanced</option>
+          <option value="gpt-4.1" {sel('llm_model','gpt-4.1')}>gpt-4.1 — Latest (Recommended)</option>
+          <option value="gpt-4.1-mini" {sel('llm_model','gpt-4.1-mini')}>gpt-4.1-mini — Fast &amp; Latest</option>
+          <option value="gpt-4.5-preview" {sel('llm_model','gpt-4.5-preview')}>gpt-4.5-preview — Most Capable</option>
+          <option value="o4-mini" {sel('llm_model','o4-mini')}>o4-mini — Reasoning, Fast</option>
+          <option value="o3" {sel('llm_model','o3')}>o3 — Reasoning, Best</option>
+          <option value="gpt-4-turbo" {sel('llm_model','gpt-4-turbo')}>gpt-4-turbo — Legacy</option>
           <option value="gpt-3.5-turbo" {sel('llm_model','gpt-3.5-turbo')}>gpt-3.5-turbo — Cheapest</option>
         </select>
       </div>
@@ -450,6 +498,36 @@ async def get_dashboard():
   </div>
 
   <!-- ── API Credentials ── -->
+  <!-- CRM Contacts Page -->
+  <div id="page-crm" class="page">
+    <div class="page-header">
+      <div class="page-title">👥 CRM Contacts</div>
+      <div class="page-sub">Every caller recorded automatically — name, phone, call history</div>
+    </div>
+    <div class="section-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div class="section-title" style="margin:0;">All Contacts</div>
+        <button class="btn btn-ghost btn-sm" onclick="loadCRM()">&#x21bb; Refresh</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border);">
+              <th style="padding:10px 12px;text-align:left;color:var(--muted);font-weight:500;">Name</th>
+              <th style="padding:10px 12px;text-align:left;color:var(--muted);font-weight:500;">Phone</th>
+              <th style="padding:10px 12px;text-align:left;color:var(--muted);font-weight:500;">Total Calls</th>
+              <th style="padding:10px 12px;text-align:left;color:var(--muted);font-weight:500;">Last Seen</th>
+              <th style="padding:10px 12px;text-align:left;color:var(--muted);font-weight:500;">Status</th>
+            </tr>
+          </thead>
+          <tbody id="crm-tbody">
+            <tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted);">Loading contacts...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <div id="page-credentials" class="page">
     <div class="page-header">
       <div class="page-title">API Credentials</div>
@@ -665,6 +743,32 @@ function showDay(dateStr, bookings) {{
       </div>`).join('');
   }}
   panel.classList.add('show');
+}}
+
+// ── CRM ─────────────────────────────────────────────────────────────────────
+async function loadCRM() {{
+  const tbody = document.getElementById('crm-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted);">Loading...</td></tr>';
+  try {{
+    const contacts = await fetch('/api/contacts').then(r => r.json());
+    if (!contacts.length) {{
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--muted);">No contacts yet. Calls will appear here automatically.</td></tr>';
+      return;
+    }}
+    tbody.innerHTML = contacts.map(c => `
+      <tr style="border-bottom:1px solid var(--border);">
+        <td style="padding:12px;">{{c.caller_name || '<span style=color:var(--muted)>Unknown</span>'}}</td>
+        <td style="padding:12px;font-weight:600;">{{c.phone_number || '—'}}</td>
+        <td style="padding:12px;text-align:center;">{{c.total_calls}}</td>
+        <td style="padding:12px;color:var(--muted);font-size:12px;">{{c.last_seen ? new Date(c.last_seen).toLocaleString() : '—'}}</td>
+        <td style="padding:12px;">{{c.is_booked
+          ? '<span style="background:#14532d;color:#22c55e;padding:2px 8px;border-radius:20px;font-size:11px;">✅ Booked</span>'
+          : '<span style="background:#1a1a2e;color:var(--muted);padding:2px 8px;border-radius:20px;font-size:11px;">📵 No booking</span>'}}</td>
+      </tr>`).join('');
+  }} catch(e) {{
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:24px;color:#ef4444;">Error loading contacts. Check Supabase credentials.</td></tr>';
+  }}
 }}
 
 // ── Save Config ─────────────────────────────────────────────────────────────

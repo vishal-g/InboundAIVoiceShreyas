@@ -359,9 +359,8 @@ async def entrypoint(ctx: JobContext):
             speaker=tts_voice,
         ),
         turn_detection="stt",
-        min_endpointing_delay=0.07,   # Faster response cutoff for natural pacing
+        min_endpointing_delay=0.07,
         allow_interruptions=True,
-        preemptive_synthesis=True,    # Start TTS as LLM streams — saves ~500ms
     )
 
     await session.start(

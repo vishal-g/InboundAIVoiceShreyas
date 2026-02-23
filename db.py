@@ -15,7 +15,7 @@ def get_supabase() -> Client | None:
         logger.error(f"Failed to initialize Supabase client: {e}")
         return None
 
-def save_call_log(phone: str, duration: int, transcript: str, summary: str = "", recording_url: str = "") -> dict:
+def save_call_log(phone: str, duration: int, transcript: str, summary: str = "", recording_url: str = "", caller_name: str = "") -> dict:
     """
     Saves a call log to the 'call_logs' table in Supabase.
     If Supabase is not configured, logs it locally instead.
@@ -39,6 +39,8 @@ def save_call_log(phone: str, duration: int, transcript: str, summary: str = "",
         }
         if recording_url:
             data["recording_url"] = recording_url
+        if caller_name:
+            data["caller_name"] = caller_name
         res = supabase.table("call_logs").insert(data).execute()
         logger.info(f"Successfully saved call log to Supabase for {phone}")
         return {"success": True, "data": res.data}

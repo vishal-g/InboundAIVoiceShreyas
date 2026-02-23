@@ -306,9 +306,6 @@ async def entrypoint(ctx: JobContext):
     
 
 
-    # ── Build agent ───────────────────────────────────────────────────────
-    agent = OutboundAssistant(agent_tools=agent_tools, first_line=first_line)
-
     # ── Read live configuration ───────────────────────────────────────────
     live_config = get_live_config()
     delay_setting = live_config.get("stt_min_endpointing_delay", 0.15)
@@ -316,6 +313,9 @@ async def entrypoint(ctx: JobContext):
     tts_voice = live_config.get("tts_voice", "rohan")
     tts_language = live_config.get("tts_language", "hi-IN")
     first_line = live_config.get("first_line", "")
+
+    # ── Build agent ───────────────────────────────────────────────────────
+    agent = OutboundAssistant(agent_tools=agent_tools, first_line=first_line)
 
     # Override OS environment variables if they are set in the UI dashboard
     for key in ["LIVEKIT_URL", "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET", "OPENAI_API_KEY", "SARVAM_API_KEY", "CAL_API_KEY", "TELEGRAM_BOT_TOKEN", "SUPABASE_URL", "SUPABASE_KEY"]:

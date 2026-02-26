@@ -10,7 +10,7 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ui-server")
 
-app = FastAPI(title="Med Spa AI Dashboard")
+app = FastAPI(title="RapidX AI Dashboard")
 
 CONFIG_FILE = "config.json"
 
@@ -24,7 +24,7 @@ def read_config():
         return config.get(key) if config.get(key) else os.getenv(env_key, default)
 
     return {
-        "first_line": get_val("first_line", "FIRST_LINE", "Namaste! Welcome to Daisy's Med Spa. Main aapki kaise madad kar sakti hoon? I can answer questions about our treatments or help you book an appointment."),
+        "first_line": get_val("first_line", "FIRST_LINE", "Namaste! This is Aryan from RapidX AI — we help businesses automate with AI. Hmm, may I ask what kind of business you run?"),
         "agent_instructions": get_val("agent_instructions", "AGENT_INSTRUCTIONS", ""),
         "stt_min_endpointing_delay": float(get_val("stt_min_endpointing_delay", "STT_MIN_ENDPOINTING_DELAY", 0.6)),
         "llm_model": get_val("llm_model", "LLM_MODEL", "gpt-4o-mini"),
@@ -171,7 +171,7 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Voice Demo — Daisy Med Spa</title>
+  <title>AI Voice Demo — RapidX AI</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
@@ -195,8 +195,8 @@ DEMO_PAGE_HTML = """<!DOCTYPE html>
 <body>
   <div class="card">
     <div class="avatar">🎙</div>
-    <h1>Talk to Daisy</h1>
-    <div class="sub">AI-powered Med Spa receptionist · Speaks your language</div>
+    <h1>Talk to Aryan</h1>
+    <div class="sub">AI-powered multilingual consultant · RapidX AI</div>
     <button class="btn btn-start" id="startBtn" onclick="startCall()">📞 Start Demo Call</button>
     <button class="btn btn-end" id="endBtn" onclick="endCall()">📵 End Call</button>
     <div id="status">Click to start a live voice demo</div>
@@ -284,25 +284,22 @@ async def api_call_single(request: Request):
 
 @app.post("/api/call/bulk")
 async def api_call_bulk(request: Request):
-    """Dispatch outbound calls to multiple numbers."""
+    """Dispatch outbound calls to multiple numbers (one per line)."""
+    import random, json as _json
+    from livekit import api as lkapi
     data = await request.json()
     numbers = [n.strip() for n in (data.get("numbers") or "").splitlines() if n.strip()]
     results = []
+    cfg = read_config()
+    lk_url    = cfg.get("livekit_url")    or os.environ.get("LIVEKIT_URL","")
+    lk_key    = cfg.get("livekit_api_key")    or os.environ.get("LIVEKIT_API_KEY","")
+    lk_secret = cfg.get("livekit_api_secret") or os.environ.get("LIVEKIT_API_SECRET","")
     for phone in numbers:
-        r = await api_call_single(Request(request.scope, request.receive))
-        # inline dispatch to avoid re-parsing body
+        if not phone.startswith("+"):
+            results.append({"phone": phone, "status": "error", "message": "Must start with +"})
+            continue
         try:
-            import random, json as _json
-            from livekit import api as lkapi
-            config = read_config()
-            if not phone.startswith("+"):
-                results.append({"phone": phone, "status": "error", "message": "Missing + prefix"})
-                continue
-            lk = lkapi.LiveKitAPI(
-                url=config.get("livekit_url") or os.environ.get("LIVEKIT_URL",""),
-                api_key=config.get("livekit_api_key") or os.environ.get("LIVEKIT_API_KEY",""),
-                api_secret=config.get("livekit_api_secret") or os.environ.get("LIVEKIT_API_SECRET",""),
-            )
+            lk = lkapi.LiveKitAPI(url=lk_url, api_key=lk_key, api_secret=lk_secret)
             room_name = f"call-{phone.replace('+','')}-{random.randint(1000,9999)}"
             dispatch = await lk.agent_dispatch.create_dispatch(
                 lkapi.CreateAgentDispatchRequest(
@@ -313,6 +310,7 @@ async def api_call_bulk(request: Request):
             )
             await lk.aclose()
             results.append({"phone": phone, "status": "ok", "dispatch_id": dispatch.id})
+            logger.info(f"Bulk outbound dispatched to {phone}: {dispatch.id}")
         except Exception as e:
             results.append({"phone": phone, "status": "error", "message": str(e)})
     return {"results": results, "total": len(results)}
@@ -573,7 +571,7 @@ async def get_dashboard():
     </div>
     <div>
       <div class="brand-text">Voice Agent</div>
-      <div class="brand-sub">Med Spa AI</div>
+      <div class="brand-sub">RapidX AI</div>
     </div>
   </div>
   <div class="sidebar-nav">
@@ -656,7 +654,7 @@ async def get_dashboard():
       <div class="section-title">Opening Greeting</div>
       <div class="form-group">
         <label>First Line (What the agent says when a call connects)</label>
-        <input type="text" id="first_line" value="{config.get('first_line', '')}" placeholder="Namaste! Welcome to Daisy's Med Spa...">
+        <input type="text" id="first_line" value="{config.get('first_line', '')}" placeholder="Namaste! This is Aryan from RapidX AI...">
         <div class="hint">This is the very first thing the agent says. Keep it concise and warm.</div>
       </div>
     </div>

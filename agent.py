@@ -258,9 +258,8 @@ class OutboundAssistant(Agent):
 
     async def on_enter(self):
         greeting = self._first_line or (
-            "Namaste! Welcome to Daisy's Med Spa. "
-            "Main aapki kaise madad kar sakti hoon? "
-            "I can answer questions about our treatments or help you book an appointment."
+            "Namaste! This is Aryan from RapidX AI — we help businesses automate with AI. "
+            "Hmm, may I ask what kind of business you run?"
         )
         await self.session.generate_reply(
             instructions=f"Say exactly this phrase: '{greeting}'"

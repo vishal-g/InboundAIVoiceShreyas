@@ -1173,19 +1173,19 @@ async function saveConfig(section) {{
 
 
 // ── Language Presets ─────────────────────────────────────────────────────────
-const LANG_PRESETS = {
-  hinglish:    { flag:'🇮🇳', label:'Hinglish',                sub:'Hindi + English mix',        color:'#6c63ff' },
-  hindi:       { flag:'🇮🇳', label:'Hindi',                   sub:'Pure Hindi',                  color:'#a855f7' },
-  english:     { flag:'🇬🇧', label:'English (India)',          sub:'Indian English',              color:'#3b82f6' },
-  tamil:       { flag:'🇮🇳', label:'Tamil',                   sub:'தமிழ்',                       color:'#f59e0b' },
-  telugu:      { flag:'🇮🇳', label:'Telugu',                  sub:'తెలుగు',                      color:'#10b981' },
-  gujarati:    { flag:'🇮🇳', label:'Gujarati',                sub:'ગુજરાતી',                     color:'#ef4444' },
-  bengali:     { flag:'🇮🇳', label:'Bengali',                 sub:'বাংলা',                       color:'#f97316' },
-  marathi:     { flag:'🇮🇳', label:'Marathi',                 sub:'मराठी',                       color:'#14b8a6' },
-  kannada:     { flag:'🇮🇳', label:'Kannada',                 sub:'ಕನ್ನಡ',                       color:'#8b5cf6' },
-  malayalam:   { flag:'🇮🇳', label:'Malayalam',               sub:'മലയാളം',                      color:'#ec4899' },
-  multilingual:{ flag:'🌍', label:'Multilingual (Auto)',       sub:'Detects caller\'s language',  color:'#22c55e' },
-};
+const LANG_PRESETS = {{
+  hinglish:    {{ flag:'🇮🇳', label:'Hinglish',                sub:'Hindi + English mix',        color:'#6c63ff' }},
+  hindi:       {{ flag:'🇮🇳', label:'Hindi',                   sub:'Pure Hindi',                  color:'#a855f7' }},
+  english:     {{ flag:'🇬🇧', label:'English (India)',          sub:'Indian English',              color:'#3b82f6' }},
+  tamil:       {{ flag:'🇮🇳', label:'Tamil',                   sub:'தமிழ்',                       color:'#f59e0b' }},
+  telugu:      {{ flag:'🇮🇳', label:'Telugu',                  sub:'తెలుగు',                      color:'#10b981' }},
+  gujarati:    {{ flag:'🇮🇳', label:'Gujarati',                sub:'ગુજરાતી',                     color:'#ef4444' }},
+  bengali:     {{ flag:'🇮🇳', label:'Bengali',                 sub:'বাংলা',                       color:'#f97316' }},
+  marathi:     {{ flag:'🇮🇳', label:'Marathi',                 sub:'मराठी',                       color:'#14b8a6' }},
+  kannada:     {{ flag:'🇮🇳', label:'Kannada',                 sub:'ಕನ್ನಡ',                       color:'#8b5cf6' }},
+  malayalam:   {{ flag:'🇮🇳', label:'Malayalam',               sub:'മലയാളം',                      color:'#ec4899' }},
+  multilingual:{{ flag:'🌍', label:'Multilingual (Auto)',       sub:"Detects caller's language",   color:'#22c55e' }},
+}};
 
 let currentLangPreset = 'hinglish';
 

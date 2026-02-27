@@ -44,16 +44,44 @@ config_router = APIRouter(prefix="/api", tags=["config"])
 
 
 @config_router.get("/config")
-async def api_get_config():
-    """Return the merged config (config.json + .env defaults)."""
-    return read_config_json()
+async def api_get_config(sub_account_id: str = None):
+    """Return the merged config (DB settings + global fallbacks)."""
+    # For Phase 1 backward compatibility with current dashboard
+    sub_account_id = sub_account_id or os.environ.get("TEST_SUB_ACCOUNT_ID")
+    
+    config = read_config_json()
+    if sub_account_id:
+        from services import db
+        settings = db.get_sub_account_settings_by_id(sub_account_id)
+        if settings:
+            # Merge DB settings over global config
+            config.update(settings)
+            
+    return config
 
 
 @config_router.post("/config")
-async def api_post_config(request: Request):
-    """Update config.json with the provided fields."""
+async def api_post_config(request: Request, sub_account_id: str = None):
+    """Update sub-account settings in DB, and global config.json."""
     data = await request.json()
+    
+    # Update global config.json first for backward compatibility
     write_config_json(data)
+    
+    # Also attempt DB update if we have a test sub account
+    sub_account_id = sub_account_id or os.environ.get("TEST_SUB_ACCOUNT_ID")
+    if sub_account_id:
+        from services import db
+        # We only want to push certain fields to the DB to avoid schema errors
+        allowed_keys = [
+            "assigned_number", "llm_model", "stt_provider", "tts_voice", 
+            "tts_language", "first_line", "agent_instructions", "cal_event_type_id"
+        ]
+        db_payload = {k: v for k, v in data.items() if k in allowed_keys}
+        if db_payload:
+            db.update_sub_account_settings(sub_account_id, db_payload)
+            logger.info(f"Configuration updated in DB for sub_account: {sub_account_id}")
+
     logger.info("Configuration updated via UI.")
     return {"status": "success"}
 
@@ -76,12 +104,12 @@ def _ensure_supabase_env():
 
 
 @data_router.get("/logs")
-async def api_get_logs():
+async def api_get_logs(sub_account_id: str):
     """Fetch the latest call logs from Supabase."""
     _ensure_supabase_env()
     from services import db
     try:
-        return db.fetch_call_logs(limit=50)
+        return db.fetch_call_logs(sub_account_id=sub_account_id, limit=50)
     except Exception as e:
         logger.error(f"Error fetching logs: {e}")
         return []
@@ -114,31 +142,31 @@ async def api_get_transcript(log_id: str):
 
 
 @data_router.get("/bookings")
-async def api_get_bookings():
+async def api_get_bookings(sub_account_id: str):
     """Fetch confirmed bookings for the calendar view."""
     _ensure_supabase_env()
     from services import db
     try:
-        return db.fetch_bookings()
+        return db.fetch_bookings(sub_account_id=sub_account_id)
     except Exception as e:
         logger.error(f"Error fetching bookings: {e}")
         return []
 
 
 @data_router.get("/stats")
-async def api_get_stats():
+async def api_get_stats(sub_account_id: str):
     """Return aggregate dashboard statistics."""
     _ensure_supabase_env()
     from services import db
     try:
-        return db.fetch_stats()
+        return db.fetch_stats(sub_account_id=sub_account_id)
     except Exception as e:
         logger.error(f"Error fetching stats: {e}")
         return {"total_calls": 0, "total_bookings": 0, "avg_duration": 0, "booking_rate": 0}
 
 
 @data_router.get("/contacts")
-async def api_get_contacts():
+async def api_get_contacts(sub_account_id: str):
     """CRM endpoint — groups call_logs by phone number into contacts."""
     _ensure_supabase_env()
     try:
@@ -147,6 +175,7 @@ async def api_get_contacts():
         res = (
             supabase.table("call_logs")
             .select("phone_number, caller_name, summary, created_at")
+            .eq("sub_account_id", sub_account_id)
             .order("created_at", desc=True)
             .limit(500)
             .execute()
@@ -194,6 +223,7 @@ async def api_call_single(request: Request):
     """Dispatch a single outbound call via LiveKit."""
     data = await request.json()
     phone = (data.get("phone") or "").strip()
+    sub_account_id = data.get("sub_account_id")
     if not phone.startswith("+"):
         return {"status": "error", "message": "Phone number must start with + and country code"}
 
@@ -202,18 +232,27 @@ async def api_call_single(request: Request):
         import random
         import json as _json
         from livekit import api as lkapi
+        from services import db
 
-        lk = lkapi.LiveKitAPI(
-            url=config.get("livekit_url") or os.environ.get("LIVEKIT_URL", ""),
-            api_key=config.get("livekit_api_key") or os.environ.get("LIVEKIT_API_KEY", ""),
-            api_secret=config.get("livekit_api_secret") or os.environ.get("LIVEKIT_API_SECRET", ""),
-        )
+        lk_url = config.get("livekit_url") or os.environ.get("LIVEKIT_URL", "")
+        lk_key = config.get("livekit_api_key") or os.environ.get("LIVEKIT_API_KEY", "")
+        lk_secret = config.get("livekit_api_secret") or os.environ.get("LIVEKIT_API_SECRET", "")
+
+        assigned_number = ""
+        if sub_account_id:
+            settings = db.get_sub_account_settings_by_id(sub_account_id) or {}
+            lk_url = settings.get("livekit_url") or lk_url
+            lk_key = settings.get("livekit_api_key") or lk_key
+            lk_secret = settings.get("livekit_api_secret") or lk_secret
+            assigned_number = settings.get("assigned_number", "")
+
+        lk = lkapi.LiveKitAPI(url=lk_url, api_key=lk_key, api_secret=lk_secret)
         room_name = f"call-{phone.replace('+', '')}-{random.randint(1000, 9999)}"
         dispatch = await lk.agent_dispatch.create_dispatch(
             lkapi.CreateAgentDispatchRequest(
                 agent_name=OUTBOUND_AGENT_NAME,
                 room=room_name,
-                metadata=_json.dumps({"phone_number": phone}),
+                metadata=_json.dumps({"phone_number": phone, "destination_number": assigned_number}),
             )
         )
         await lk.aclose()
@@ -230,14 +269,25 @@ async def api_call_bulk(request: Request):
     import random
     import json as _json
     from livekit import api as lkapi
+    from services import db
 
     data = await request.json()
+    sub_account_id = data.get("sub_account_id")
     numbers = [n.strip() for n in (data.get("numbers") or "").splitlines() if n.strip()]
     results = []
     cfg = read_config_json()
+    
     lk_url = cfg.get("livekit_url") or os.environ.get("LIVEKIT_URL", "")
     lk_key = cfg.get("livekit_api_key") or os.environ.get("LIVEKIT_API_KEY", "")
     lk_secret = cfg.get("livekit_api_secret") or os.environ.get("LIVEKIT_API_SECRET", "")
+
+    assigned_number = ""
+    if sub_account_id:
+        settings = db.get_sub_account_settings_by_id(sub_account_id) or {}
+        lk_url = settings.get("livekit_url") or lk_url
+        lk_key = settings.get("livekit_api_key") or lk_key
+        lk_secret = settings.get("livekit_api_secret") or lk_secret
+        assigned_number = settings.get("assigned_number", "")
 
     for phone in numbers:
         if not phone.startswith("+"):
@@ -250,7 +300,7 @@ async def api_call_bulk(request: Request):
                 lkapi.CreateAgentDispatchRequest(
                     agent_name=OUTBOUND_AGENT_NAME,
                     room=room_name,
-                    metadata=_json.dumps({"phone_number": phone}),
+                    metadata=_json.dumps({"phone_number": phone, "destination_number": assigned_number}),
                 )
             )
             await lk.aclose()

@@ -112,16 +112,23 @@ async def outbound_entrypoint(ctx: JobContext) -> None:
     logger.info(f"[ROOM] Connected: {ctx.room.name}")
     logger.info(f"[ROOM] Job metadata: {ctx.job.metadata}")
 
-    caller_phone, caller_name, raw_phone = extract_caller_info(ctx)
-    logger.info(f"[CALLER] Phone: {caller_phone} | Name: {caller_name} | Raw: {raw_phone}")
+    # For outbound calls, the dialed number is extracted from metadata by extract_caller_info
+    caller_phone, caller_name, destination_phone = extract_caller_info(ctx)
+    logger.info(f"[CALLER] Phone: {caller_phone} | Name: {caller_name} | Destination: {destination_phone}")
+
+    # The caller_phone here is the person we are dialing. 
+    # The destination_phone is the number we are dialing FROM (our system number).
+    # We use our system number to look up the sub-account config.
+    system_phone = destination_phone or ""
 
     if is_rate_limited(caller_phone):
         logger.warning(f"[RATE-LIMIT] Blocked {caller_phone}")
         return
 
     # ── Config ────────────────────────────────────────────────────────────
-    live_config = get_live_config(caller_phone)
+    live_config = get_live_config(system_phone)
     apply_config_env_overrides(live_config)
+    sub_account_id = live_config.get("sub_account_id")
 
     tts_voice = live_config.get("tts_voice", "kavya")
     tts_language = live_config.get("tts_language", "hi-IN")
@@ -129,7 +136,7 @@ async def outbound_entrypoint(ctx: JobContext) -> None:
     logger.info(f"[CONFIG] LLM={live_config.get('llm_model')} | STT={live_config.get('stt_provider')} | TTS={tts_voice}/{tts_language} | MaxTurns={max_turns}")
 
     # ── Caller memory ────────────────────────────────────────────────────
-    history = await get_caller_history(caller_phone)
+    history = await get_caller_history(caller_phone, sub_account_id)
     if history:
         logger.info(f"[MEMORY] Loaded history for {caller_phone}")
         live_config["agent_instructions"] = live_config.get("agent_instructions", "") + history
@@ -137,7 +144,7 @@ async def outbound_entrypoint(ctx: JobContext) -> None:
     # ── Tools ─────────────────────────────────────────────────────────────
     agent_tools = AgentTools(caller_phone=caller_phone, caller_name=caller_name)
     agent_tools._sip_identity = (
-        f"sip_{caller_phone.replace('+', '')}" if raw_phone else "outbound_caller"
+        f"sip_{caller_phone.replace('+', '')}" if destination_phone else "outbound_caller"
     )
     agent_tools.ctx_api = ctx.api
     agent_tools.room_name = ctx.room.name
@@ -283,6 +290,7 @@ async def outbound_entrypoint(ctx: JobContext) -> None:
             interrupt_count=interrupt_count,
             caller_phone=caller_phone,
             caller_name=caller_name,
+            sub_account_id=sub_account_id,
         )
         logger.info(f"[SHUTDOWN] ═══ Shutdown complete ═══")
 

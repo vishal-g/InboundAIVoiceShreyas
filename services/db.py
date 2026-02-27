@@ -77,7 +77,7 @@ def save_call_log(
         return {"success": False, "message": str(e)}
 
 
-def fetch_call_logs(limit: int = 50) -> list:
+def fetch_call_logs(limit: int = 50, sub_account_id: str | None = None) -> list:
     """
     Fetches the latest call logs from Supabase for the UI dashboard.
     """
@@ -86,14 +86,17 @@ def fetch_call_logs(limit: int = 50) -> list:
         return []
 
     try:
-        res = supabase.table("call_logs").select("*").order("created_at", desc=True).limit(limit).execute()
+        query = supabase.table("call_logs").select("*")
+        if sub_account_id:
+            query = query.eq("sub_account_id", sub_account_id)
+        res = query.order("created_at", desc=True).limit(limit).execute()
         return res.data
     except Exception as e:
         logger.error(f"Failed to fetch call logs: {e}")
         return []
 
 
-def fetch_bookings() -> list:
+def fetch_bookings(sub_account_id: str | None = None) -> list:
     """
     Fetches confirmed bookings (calls where summary contains 'Confirmed') for the calendar.
     """
@@ -101,21 +104,22 @@ def fetch_bookings() -> list:
     if not supabase:
         return []
     try:
-        res = (
+        query = (
             supabase.table("call_logs")
             .select("id, phone_number, summary, created_at")
             .ilike("summary", "%Confirmed%")
-            .order("created_at", desc=True)
-            .limit(200)
-            .execute()
         )
+        if sub_account_id:
+            query = query.eq("sub_account_id", sub_account_id)
+            
+        res = query.order("created_at", desc=True).limit(200).execute()
         return res.data
     except Exception as e:
         logger.error(f"Failed to fetch bookings: {e}")
         return []
 
 
-def fetch_stats() -> dict:
+def fetch_stats(sub_account_id: str | None = None) -> dict:
     """
     Returns aggregate stats for the dashboard: total calls, bookings, avg duration, booking rate.
     """
@@ -123,7 +127,11 @@ def fetch_stats() -> dict:
     if not supabase:
         return {"total_calls": 0, "total_bookings": 0, "avg_duration": 0, "booking_rate": 0}
     try:
-        all_res = supabase.table("call_logs").select("duration_seconds, summary").execute()
+        query = supabase.table("call_logs").select("duration_seconds, summary")
+        if sub_account_id:
+            query = query.eq("sub_account_id", sub_account_id)
+        
+        all_res = query.execute()
         rows = all_res.data or []
         total = len(rows)
         bookings = sum(1 for r in rows if r.get("summary") and "Confirmed" in r.get("summary", ""))
@@ -156,6 +164,28 @@ def get_sub_account_by_number(phone: str) -> dict | None:
         return None
     except Exception as e:
         logger.error(f"Failed to fetch sub-account config for number {phone}: {e}")
+        return None
+
+def get_sub_account_settings_by_id(sub_account_id: str) -> dict | None:
+    """
+    Fetches the sub_account settings by explicit ID.
+    Returns None if not found.
+    """
+    supabase = get_supabase()
+    if not supabase:
+        return None
+    try:
+        res = (
+            supabase.table("sub_account_settings")
+            .select("*, sub_accounts(name, ghl_sub_account_id)")
+            .eq("sub_account_id", sub_account_id)
+            .execute()
+        )
+        if hasattr(res, 'data') and len(res.data) > 0:
+            return res.data[0]
+        return None
+    except Exception as e:
+        logger.error(f"Failed to fetch sub-account config for ID {sub_account_id}: {e}")
         return None
 
 def update_sub_account_settings(sub_account_id: str, settings: dict) -> dict:

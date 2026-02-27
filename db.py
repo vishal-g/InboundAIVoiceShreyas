@@ -1,3 +1,12 @@
+"""
+db.py — Supabase database operations.
+
+Provides CRUD functions for the ``call_logs`` table:
+- ``save_call_log()`` — insert call details after shutdown
+- ``fetch_call_logs()`` — recent call list for the dashboard
+- ``fetch_bookings()`` — confirmed bookings for the calendar view
+- ``fetch_stats()`` — aggregate statistics (total calls, booking rate, etc.)
+"""
 import os
 import logging
 from supabase import create_client, Client

@@ -1,0 +1,261 @@
+--- Analyzing references/n8n-workflows/Text_Engine.json ---
+Total Nodes: 145
+NOTE: ## Webhook Opt-In...
+NOTE: ## LLM Model...
+NOTE: ## Conversation History...
+NODE: Set_User_Details (n8n-nodes-base.set)
+NOTE: ## Set Static Fields...
+NODE: Set_User_ID (n8n-nodes-base.set)
+NOTE: ## Agent 4...
+NODE: Supabase Memory (@n8n/n8n-nodes-langchain.memoryPostgresChat)
+NODE: Chat Memory Manager (@n8n/n8n-nodes-langchain.memoryManager)
+NODE: Structured Output Parser (@n8n/n8n-nodes-langchain.outputParserStructured)
+NODE: Respond to Webhook1 (n8n-nodes-base.respondToWebhook)
+NOTE: ## Create Followups...
+NODE: Follow Up Status (@n8n/n8n-nodes-langchain.chainLlm)
+  PROMPT:
+=Chat History: 
+- {{ $json.messages.map(m => `Human: ${m.human}\nAI: ${m.ai}`).join('\n\n') }}
+
+
+IMPORTANT:
+### LANGUAGE HANDLING RULE ###
+**ALWAYS REPLY IN THE SAME LANGUAGE THAT THE USER USED IN THEIR MESSAGES. DO NOT TRANSLATE. NEVER USE A DIFFERENT LANGUAGE THAN THE USER**
+
+NODE: OpenRouter Chat Model (@n8n/n8n-nodes-langchain.lmChatOpenRouter)
+NODE: Set_Chat_History_&_Json_Split (n8n-nodes-base.set)
+NODE: Switch3 (n8n-nodes-base.switch)
+NODE: Set_Chat_History_&_Json_Split1 (n8n-nodes-base.set)
+NODE: Set_Chat_History_&_Json_Split2 (n8n-nodes-base.set)
+NODE: Set_Chat_History_&_Json_Split3 (n8n-nodes-base.set)
+NODE: Set_Chat_History_&_Json_Split4 (n8n-nodes-base.set)
+NOTE: ## Reply Post Processing and Sending...
+NODE: Structured Output Parser2 (@n8n/n8n-nodes-langchain.outputParserStructured)
+NODE: Split Reply to JSON1 (@n8n/n8n-nodes-langchain.agent)
+  PROMPT:
+=<## Input Message>
+{{ $('Set_Agent_Response').item.json.Agent_Resposne }}
+</## Input Message>
+
+<## Chat History>
+{{ JSON.stringify($('Chat Memory Manager1').item.json.messagesCount, null, 2) }}
+
+</## Chat History>
+
+CRITICAL IMPORTANT:
+- Always Use Capital letter randomly (First character of sentences) and it must be present everytime in your response randomly
+
+## CRITICAL
+- NEVER add, omit, or change any words (only formatting/punctuation changes allowed).
+- ALWAYS output a JSON object with "totalMessages" and the appropriate message keys.
+- APPLY random human-like formatting to 60-80% of messages for authenticity.
+- USE question mark variations (?, ??) naturally throughout messages.
+- Never add anything new words or sentence in the original text.
+- You always have to split the orginal text without adding any additional new text.
+- Make sure to use random capital and small letters while starting with the new link. (only first characters should be followed)
+- Always keep random capitalization from the original text to keep human like effect
+- Also make sure not to split message more than 2-3 messages for the small response. It looks very weird
+
+**STRICT PATTERN RULES - RANDOMIZE CAPITALIZATION:(Modify the Original Text for the Capitalization**
+- **Message 1:** RANDOMLY choose Capital OR lowercase first letter + punctuation (comma, period, or exclamation)
+- **Message 2:** RANDOMLY choose Capital OR lowercase first letter + NO punctuation
+- **Message 3:** RANDOMLY choose Capital OR lowercase first letter + NO punctuation
+- **Message 4:** RANDOMLY choose Capital OR lowercase first letter + punctuation
+- **Message 5:** RANDOMLY choose Capital OR lowercase first letter + random punctuation
+
+**CRITICAL CAPITALIZATION RULES:**
+- **RANDOMIZE the first letter capitalization** - don't follow a predictable pattern
+- **Mix capital and lowercase starting letters throughout messages**
+- **This creates natural human texting variation**
+- **Only the FIRST letter changes case. Rest of message keeps original capitalization**
+
+### 4. QUESTION HANDLING (CRITICAL)
+**ONLY add question marks when the message content is ACTUALLY asking a question:**
+
+**Question Mark Placement Rules:**
+- **Message 1:** If asking something → add "?"
+- **Message 2:** If asking something → add "?"  
+- **Message 3:** If asking something → add "??"
+- **Message 4:** If asking something → add "?"
+- **Message 5:** If asking something → add "?"
+
+## REQUIRED OUTPUT FORMAT
+```json
+{
+  "totalMessages": [number between 2-5],
+  "message1": "[text following Pattern 1 rules]",
+  "message2": "[text following Pattern 2 rules]",
+  "message3": "[text following Pattern 3 rules]",
+  "message4": "[text following Pattern 4 rules]",
+  "message5": "[text following Pattern 5 rules]"
+}
+
+
+Special Notes: 
+- You can modify the original text for the capitalization of the first characters in the sentences randomly
+- Never repeat the same text again and again. Always remember to split original message never add any new sentence on your own
+- Don't split shorter message in 3-4 parts. try to keep that in max 2 message to show as human-like
+
+NODE: Checking_Form_Submission (n8n-nodes-base.code)
+  CODE:
+const text = $('Webhook').first().json.body.payload || "";
+
+// Trim leading spaces just in case
+const trimmedText = text.trim();
+
+// Case sensitive check for "Contact Information:" at the start
+const ...
+
+NODE: Filter (n8n-nodes-base.filter)
+NOTE: ## Form Submission or Message?...
+NOTE: ## Website Number 4?...
+NOTE: ## Agent 1...
+NOTE: ## Agent 2...
+NODE: If (n8n-nodes-base.if)
+NOTE: ## Agent Number 1?...
+NODE: If1 (n8n-nodes-base.if)
+NOTE: ## Agent Number 2?...
+NODE: If2 (n8n-nodes-base.if)
+NODE: Set_Agent_Response (n8n-nodes-base.set)
+NODE: Webhook1 (n8n-nodes-base.webhook)
+NODE: When Executed by Another Workflow (n8n-nodes-base.executeWorkflowTrigger)
+NODE: Start_Date1 (n8n-nodes-base.dateTime)
+NODE: End_Date1 (n8n-nodes-base.dateTime)
+NODE: Set_startDate_endDate1 (n8n-nodes-base.set)
+NODE: getAvailableSlot1 (n8n-nodes-base.httpRequest)
+  URL: =https://services.leadconnectorhq.com/calendars/{{ $('When Executed by Another Workflow').item.json.calendarId }}/free-slots/
+NOTE: ## GetAvailable Sub-Workflow...
+NODE: Get_User_TimeZone1 (@n8n/n8n-nodes-langchain.toolCode)
+  CODE:
+const timezone = query.timezone;
+
+const now = new Date();
+
+const options = { timeZone: timezone, hour12: false };
+const formatterDate = new Intl.DateTimeFormat('en-US', { ...options, year: 'numeric', ...
+
+NODE: Get_Available_Slot1 (@n8n/n8n-nodes-langchain.toolWorkflow)
+NODE: bookAppointment1 (@n8n/n8n-nodes-langchain.toolHttpRequest)
+  URL: =https://services.leadconnectorhq.com/calendars/events/appointments
+  METHOD: POST
+NODE: getContactAppointments1 (@n8n/n8n-nodes-langchain.toolHttpRequest)
+  URL: =https://services.leadconnectorhq.com/contacts/{{ $('Set_User_ID').item.json.User_ID }}/appointments
+NODE: updateAppointment1 (@n8n/n8n-nodes-langchain.toolHttpRequest)
+  URL: =https://services.leadconnectorhq.com/calendars/events/appointments/{eventId}
+  METHOD: PUT
+NODE: cancelAppointment1 (@n8n/n8n-nodes-langchain.toolHttpRequest)
+  URL: =https://services.leadconnectorhq.com/calendars/events/appointments/{eventId}
+  METHOD: PUT
+NOTE: ## Booking Functions Connected with HighLevel Calendar...
+NODE: Set_Assignee_Id (n8n-nodes-base.set)
+NODE: Set_Calendar_Id (n8n-nodes-base.set)
+NODE: Set_Location_Id (n8n-nodes-base.set)
+NODE: Webhook (n8n-nodes-base.webhook)
+NODE: Extract User Information (@n8n/n8n-nodes-langchain.informationExtractor)
+  PROMPT:
+=User last input:
+{{ $('Set_User_Utterance').item.json.User_Utterance }}
+
+Chat history with the user:
+{{ JSON.stringify($('Chat Memory Manager1').item.json.messages, null, 2) }}
+
+NODE: No User Info? (n8n-nodes-base.if)
+NODE: Embeddings OpenAI (@n8n/n8n-nodes-langchain.embeddingsOpenAi)
+NODE: Knowledgebase tool' (@n8n/n8n-nodes-langchain.vectorStoreSupabase)
+NOTE: ## Supabase Knowledgebase ...
+NODE: getContact (n8n-nodes-base.httpRequest)
+  URL: =https://services.leadconnectorhq.com/contacts/{{ $('Set_User_ID').item.json.User_ID }}
+NODE: Get API Credentials (n8n-nodes-base.supabase)
+NODE: Get Prompts (n8n-nodes-base.supabase)
+NODE: Assign to Human1 (n8n-nodes-base.httpRequest)
+  URL: ={{ $('Set_Inbound_Webhook').item.json.Transfer_To_Human_Inbound_Webhook }}
+NODE: Analyze User Response1 (@n8n/n8n-nodes-langchain.textClassifier)
+NODE: Structured_Prompt (n8n-nodes-base.code)
+  CODE:
+// Get the data array from Supabase response
+const input = $input.all()[0].json;
+
+// Check if data exists and is an array
+let prompts = [];
+if (input.data && Array.isArray(input.data)) {
+  prompts = i...
+
+NODE: Agg_Set_Prompts1 (n8n-nodes-base.aggregate)
+NOTE: Only change the Name of your appointment from "Eugene"...
+NODE: Set_HighLevel_API_Key (n8n-nodes-base.set)
+NODE: Get API Credentials1 (n8n-nodes-base.aggregate)
+NODE: Set_Inbound_Webhook (n8n-nodes-base.set)
+NODE: Chat Memory Manager1 (@n8n/n8n-nodes-langchain.memoryManager)
+NOTE: ## Extract Complete Chat History...
+NOTE: ## Transfer Lead to Human ...
+NOTE: # FUNCTION...
+NOTE: ## Extract Lead Details ...
+NOTE: # FUNCTION...
+NODE: Set_User_Utterance (n8n-nodes-base.set)
+NOTE: # RED NOTES  ## THEY MEAN THAT YOU MUST CHANGE CREDENTIALS / PROMPT / DETAILS TO MAKE THE ENGINE WOR...
+NOTE: # BLUE NOTES  ## THEY MEAN THAT YOU MIGHT WANT TO CHANGE PROMPT / DETAILS TO BETTER FIT YOUR OWN WOR...
+NOTE: # GREY NOTES  ## THESE ARE THE NODES YOU SHOULD NOT TOUCH - THEY ARE BUILT IN A WAY TO MAKE YOUR ENG...
+NOTE: ## IN SIMPLE WORDS - THE VERY FIRST THING THAT YOU MUST DO IS TO GO THROUGH ALL THE RED NOTES AND PU...
+NOTE: ## Agent 3...
+NOTE: ## Agent Number 3?...
+NODE: If3 (n8n-nodes-base.if)
+NOTE: ## Score  Lead ...
+NOTE: # FUNCTION...
+NODE: Structured Output Parser3 (@n8n/n8n-nodes-langchain.outputParserStructured)
+NODE: Send Lead Score (n8n-nodes-base.httpRequest)
+  URL: ={{ $('Set_Inbound_Webhook').item.json.Lead_Score_Webhook }}
+NODE: Send Lead Details (n8n-nodes-base.httpRequest)
+  URL: ={{ $('Set_Inbound_Webhook').item.json.User_Details_Inbound_Webhook }}
+  METHOD: POST
+NOTE: ## LLM Model...
+NODE: OpenRouter Chat Model1 (@n8n/n8n-nodes-langchain.lmChatOpenRouter)
+NODE: Set_Text_Prompts (n8n-nodes-base.set)
+NODE: Respond to Webhook3 (n8n-nodes-base.httpRequest)
+  URL: ={{ $('Set_Inbound_Webhook').item.json.Save_Reply }}
+  METHOD: POST
+NODE: Respond to Webhook (n8n-nodes-base.httpRequest)
+  URL: ={{ $('Set_Inbound_Webhook').item.json.Save_Reply }}
+  METHOD: POST
+NODE: Respond to Webhook4 (n8n-nodes-base.httpRequest)
+  URL: ={{ $('Set_Inbound_Webhook').item.json.Save_Reply }}
+  METHOD: POST
+NODE: Respond to Webhook5 (n8n-nodes-base.httpRequest)
+  URL: ={{ $('Set_Inbound_Webhook').item.json.Save_Reply }}
+  METHOD: POST
+NODE: Respond to Webhook6 (n8n-nodes-base.httpRequest)
+  URL: ={{ $('Set_Inbound_Webhook').item.json.Save_Reply }}
+  METHOD: POST
+NOTE: ## LLM Model...
+NODE: OpenRouter Chat Model2 (@n8n/n8n-nodes-langchain.lmChatOpenRouter)
+NODE: Lead Scoring Agent (@n8n/n8n-nodes-langchain.chainLlm)
+  PROMPT:
+=User last input:
+{{ $('Set_User_Utterance').item.json.User_Utterance }}
+
+Chat history with the user:
+{{ JSON.stringify($('Chat Memory Manager1').item.json.messages, null, 2) }}
+
+NODE: Supabase Memory1 (@n8n/n8n-nodes-langchain.memoryPostgresChat)
+NODE: Agent-1 (@n8n/n8n-nodes-langchain.agent)
+  PROMPT:
+=# USER LAST UTTERANCE
+{{ $('Set_User_Utterance').item.json.User_Utterance }}
+
+NODE: Agent-2 (@n8n/n8n-nodes-langchain.agent)
+  PROMPT:
+=## USER LAST UTTERANCE
+{{ $('Set_User_Utterance').item.json.User_Utterance }}
+
+NODE: Agent-3 (@n8n/n8n-nodes-langchain.agent)
+  PROMPT:
+=## USER LAST UTTERANCE
+{{ $('Set_User_Utterance').item.json.User_Utterance }}
+
+# User Details:
+{{ $('Set_User_Details').item.json.User_Details }}
+
+NODE: Agent-4 (@n8n/n8n-nodes-langchain.agent)
+  PROMPT:
+=## USER LAST UTTERANCE
+{{ $('Set_User_Utterance').item.json.User_Utterance }}
+

@@ -208,6 +208,11 @@ async def api_get_contacts(sub_account_id: str):
 
 app.include_router(data_router)
 
+# ══════════════════════════════════════════════════════════════════════════════
+# Webhooks Router (GHL Integration)
+# ══════════════════════════════════════════════════════════════════════════════
+from routers.webhooks import hook_router
+app.include_router(hook_router)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Calls Router (outbound dispatch)

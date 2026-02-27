@@ -31,7 +31,7 @@ logging.getLogger("hpack").setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logging.getLogger("httpcore").setLevel(logging.WARNING)
 
-load_dotenv()
+load_dotenv(override=True)
 logger = logging.getLogger("outbound-agent")
 logging.basicConfig(level=logging.INFO)
 
@@ -103,12 +103,8 @@ def get_live_config(phone_number: str | None = None):
 
 # ── Token counter (#11) ───────────────────────────────────────────────────────
 def count_tokens(text: str) -> int:
-    try:
-        import tiktoken
-        enc = tiktoken.encoding_for_model("gpt-4o")
-        return len(enc.encode(text))
-    except Exception:
-        return len(text.split())
+    """Approximate token count using word-based heuristic (avoids tiktoken download hang)."""
+    return int(len(text.split()) / 0.75)  # rough estimate: ~0.75 words per token
 
 
 # ── IST time context ──────────────────────────────────────────────────────────
@@ -222,24 +218,45 @@ class AgentTools(llm.ToolContext):
         return "Call ended."
 
     # ── Tool: Save Booking Intent ─────────────────────────────────────────
-    @llm.function_tool(description="Save booking intent after caller confirms appointment. Call this ONCE after you have name, phone, email, date, time.")
+    @llm.function_tool(description="Save booking intent after caller confirms appointment. Call this ONCE after you have name, email, date, and time. You MUST collect and confirm email before calling this.")
     async def save_booking_intent(
         self,
-        start_time:  Annotated[str,  "ISO 8601 datetime e.g. '2026-03-01T10:00:00+05:30'"],
-        caller_name: Annotated[str,  "Full name of the caller"],
-        caller_phone:Annotated[str,  "Phone number of the caller"],
-        notes:       Annotated[str,  "Any notes, email, or special requests"] = "",
+        start_time:   Annotated[str, "ISO 8601 datetime e.g. '2026-03-01T10:00:00+05:30'"],
+        caller_name:  Annotated[str, "Full name of the caller"],
+        caller_phone: Annotated[str, "Phone number of the caller"],
+        caller_email: Annotated[str, "Email address of the caller e.g. 'john@gmail.com'. Must contain @ and a domain."],
+        notes:        Annotated[str, "Any special requests or notes"] = "",
     ) -> str:
-        logger.info(f"[TOOL] save_booking_intent: {caller_name} at {start_time}")
+        # Normalize email from voice transcription
+        email = caller_email.lower().strip()
+        # Common STT misinterpretations
+        for phrase in ["at the rate of", "at the rate", "at rate", " at ", " eta "]:
+            email = email.replace(phrase, "@")
+        for phrase in [" dot ", " period "]:
+            email = email.replace(phrase, ".")
+        email = email.replace(" ", "")  # remove any remaining spaces
+        # Fix common domain misspellings
+        email = email.replace("gmial", "gmail").replace("gmal", "gmail").replace("gmai", "gmail")
+        email = email.replace("yaho", "yahoo").replace("hotmal", "hotmail")
+        email = email.replace(".con", ".com").replace(".coom", ".com")
+
+        logger.info(f"[TOOL] save_booking_intent: {caller_name} <{email}> at {start_time}")
+
+        # Basic validation
+        if "@" not in email or "." not in email.split("@")[-1]:
+            logger.warning(f"[TOOL] Email looks invalid: {email}")
+            return f"The email '{email}' doesn't look right. Please ask the caller to spell their email again, letter by letter."
+
         try:
             self.booking_intent = {
                 "start_time":   start_time,
                 "caller_name":  caller_name,
                 "caller_phone": caller_phone,
+                "caller_email": email,
                 "notes":        notes,
             }
             self.caller_name = caller_name
-            return f"Booking intent saved for {caller_name} at {start_time}. I'll confirm after the call."
+            return f"Booking intent saved for {caller_name} ({email}) at {start_time}. I'll confirm after the call."
         except Exception as e:
             logger.error(f"[TOOL] save_booking_intent failed: {e}")
             return "I had trouble saving the booking. Please try again."
@@ -318,9 +335,11 @@ class OutboundAssistant(Agent):
                 "Hmm, may I ask what kind of business you run?"
             )
         )
+        logger.info(f"[AGENT] on_enter() called, generating greeting...")
         await self.session.generate_reply(
             instructions=f"Say exactly this phrase: '{greeting}'"
         )
+        logger.info(f"[AGENT] on_enter() greeting generation complete")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -429,7 +448,7 @@ async def entrypoint(ctx: JobContext):
     if llm_provider == "groq":
         agent_llm = openai.LLM.with_groq(
             model=llm_model or "llama-3.3-70b-versatile",
-            max_tokens=120,
+            max_completion_tokens=120,
         )
         logger.info(f"[LLM] Using Groq: {llm_model}")
     elif llm_provider == "claude":
@@ -439,11 +458,11 @@ async def entrypoint(ctx: JobContext):
             model=llm_model or "claude-haiku-3-5-latest",
             base_url="https://api.anthropic.com/v1/",
             api_key=_anthropic_key,
-            max_tokens=120,
+            max_completion_tokens=120,
         )
         logger.info(f"[LLM] Using Claude via Anthropic: {llm_model}")
     else:
-        agent_llm = openai.LLM(model=llm_model, max_tokens=120)  # cap tokens (#7)
+        agent_llm = openai.LLM(model=llm_model, max_completion_tokens=120)  # cap tokens (#7)
         logger.info(f"[LLM] Using OpenAI: {llm_model}")
 
     # ── Build STT (#1 16kHz, #20 auto-detect, #9 Deepgram) ──────────────
@@ -491,14 +510,14 @@ async def entrypoint(ctx: JobContext):
                 target_language_code=tts_language,
                 model="bulbul:v3",
                 speaker=tts_voice,
-                sample_rate=24000,
+                speech_sample_rate=24000,
             )
     else:
         agent_tts = sarvam.TTS(
             target_language_code=tts_language,
             model="bulbul:v3",
             speaker=tts_voice,
-            sample_rate=24000,          # force 24kHz (#2)
+            speech_sample_rate=24000,   # force 24kHz (#2)
         )
         logger.info(f"[TTS] Using Sarvam Bulbul v3 — voice: {tts_voice} lang: {tts_language}")
 
@@ -543,12 +562,23 @@ async def entrypoint(ctx: JobContext):
         allow_interruptions=True,
     )
 
-    await session.start(room=ctx.room, agent=agent, room_input_options=room_input)
+    logger.info("[SESSION] Starting session.start()...")
+    try:
+        await asyncio.wait_for(
+            session.start(room=ctx.room, agent=agent, room_input_options=room_input),
+            timeout=30.0,
+        )
+        logger.info("[SESSION] session.start() completed successfully")
+    except asyncio.TimeoutError:
+        logger.error("[SESSION] session.start() timed out after 30s!")
+        return
 
     # ── TTS pre-warm (#12) ────────────────────────────────────────────────
     try:
-        await session.tts.prewarm()
+        await asyncio.wait_for(session.tts.prewarm(), timeout=5.0)
         logger.info("[TTS] Pre-warmed successfully")
+    except asyncio.TimeoutError:
+        logger.warning("[TTS] Pre-warm timed out after 5s — continuing without it")
     except Exception as e:
         logger.debug(f"[TTS] Pre-warm skipped: {e}")
 
@@ -563,27 +593,32 @@ async def entrypoint(ctx: JobContext):
             api_key=os.environ["LIVEKIT_API_KEY"],
             api_secret=os.environ["LIVEKIT_API_SECRET"],
         )
-        egress_resp = await rec_api.egress.start_room_composite_egress(
-            api.RoomCompositeEgressRequest(
-                room_name=ctx.room.name,
-                audio_only=True,
-                file_outputs=[api.EncodedFileOutput(
-                    file_type=api.EncodedFileType.OGG,
-                    filepath=f"recordings/{ctx.room.name}.ogg",
-                    s3=api.S3Upload(
-                        access_key=os.environ["SUPABASE_S3_ACCESS_KEY"],
-                        secret=os.environ["SUPABASE_S3_SECRET_KEY"],
-                        bucket="call-recordings",
-                        region=os.environ.get("SUPABASE_S3_REGION", "ap-south-1"),
-                        endpoint=os.environ["SUPABASE_S3_ENDPOINT"],
-                        force_path_style=True,
-                    )
-                )]
-            )
+        egress_resp = await asyncio.wait_for(
+            rec_api.egress.start_room_composite_egress(
+                api.RoomCompositeEgressRequest(
+                    room_name=ctx.room.name,
+                    audio_only=True,
+                    file_outputs=[api.EncodedFileOutput(
+                        file_type=api.EncodedFileType.OGG,
+                        filepath=f"recordings/{ctx.room.name}.ogg",
+                        s3=api.S3Upload(
+                            access_key=os.environ["SUPABASE_S3_ACCESS_KEY"],
+                            secret=os.environ["SUPABASE_S3_SECRET_KEY"],
+                            bucket="call-recordings",
+                            region=os.environ.get("SUPABASE_S3_REGION", "ap-south-1"),
+                            endpoint=os.environ["SUPABASE_S3_ENDPOINT"],
+                            force_path_style=True,
+                        )
+                    )]
+                )
+            ),
+            timeout=10.0,
         )
         egress_id = egress_resp.egress_id
         await rec_api.aclose()
         logger.info(f"[RECORDING] Started egress: {egress_id}")
+    except asyncio.TimeoutError:
+        logger.warning("[RECORDING] Egress start timed out after 10s — skipping recording")
     except Exception as e:
         logger.warning(f"[RECORDING] Failed to start recording: {e}")
 
@@ -698,7 +733,8 @@ async def entrypoint(ctx: JobContext):
                 start_time=intent["start_time"],
                 caller_name=intent["caller_name"] or "Unknown Caller",
                 caller_phone=intent["caller_phone"],
-                notes=intent["notes"],
+                notes=intent.get("notes", ""),
+                caller_email=intent.get("caller_email", ""),
             )
             if result.get("success"):
                 notify_booking_confirmed(

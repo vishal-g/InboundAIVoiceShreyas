@@ -8,29 +8,29 @@ This document outlines the strategic roadmap to evolve the current standalone vo
 
 To keep your overhead near zero, you must avoid deploying separate instances/codebases for each client. **Everyone runs on the exact same code.**
 
-### How it works:
-1. **Database-Driven Config**: `config.json` goes away. We migrate all configurations to Supabase tables.
-    * `clients`: ID, Name, Plan, active status.
-    * `client_settings`: API keys (Twilio, Cal.com), LLM preferences, Twilio/SIP phone numbers assigned to them.
-    * `campaigns`: Active campaigns linked to a client.
-2. **Dynamic Routing**: When a call or SMS comes in, the system looks up the destination phone number in the DB to immediately identify the `client_id` and loads their specific settings, prompts, and knowledge base dynamically.
+### How it works alongside GHL:
+1. **GHL as the Source of Truth**: GoHighLevel (GHL) remains your primary CRM for lead management, pipelines, and basic standard automations.
+2. **Database-Driven Agent Config**: We map GHL Sub-Accounts to our system. We migrate agent-specific configurations to Supabase tables.
+    * `clients`: ID, GHL Sub-Account ID, Name, Plan, active status.
+    * `client_settings`: API keys, LLM preferences, Twilio/SIP phone numbers assigned to them.
+3. **Dynamic Routing**: When a call or SMS comes in, the system looks up the destination phone number in the DB to immediately identify the `client_id` and loads their specific settings, prompts, and knowledge base dynamically.
 3. **Feature Flags**: Every client has a JSON chunk in the DB like `{"sms_followup": true, "appointment_reminders": false}`. Your code just checks this flag to enable/disable features without touching code.
 
 ---
 
-## 🧠 2. Replacing n8n with LangGraph (Python)
+## 🧠 2. The Agentic Layer (LangGraph replacing n8n)
 
-Replacing n8n with Python code natively embedded in your app is the right move for version control, debugging, and avoiding multiple subscription costs.
+Since your standard workflows (emails, basic pipeline moves) live in GHL, n8n is currently acting as your "Agentic Layer" for complex, LLM-driven reasoning. Replacing n8n with LangGraph (Python code natively embedded in your app) is the right move for version control, debugging, and scaling across clients without hitting n8n workflow limits.
 
-**Why LangGraph?**
+**Why LangGraph for the Agentic Layer?**
 LangGraph is built exactly for this. It models stateful, multi-actor applications as graphs.
 
 1. **State Persistence**: LangGraph natively saves "checkpoints" to a database (we can map this to Supabase). This means a workflow can sleep for 3 days (e.g., waiting for an appointment), wake up, and continue exactly where it left off.
 2. **Visual Debugging**: **LangGraph Studio** gives you a visual UI to see every step the workflow took, replay errors, and see what the LLM thought at any given node. It gives you the "n8n visual feel" but with pure Python code.
 3. **The Workflows**:
-    * **Text Engine / Query Addressing**: A LangGraph graph that receives an incoming SMS, routes it to an RAG node (Knowledgebase), drafts a reply, and sends it via Twilio.
-    * **Lead Nurturing / Drip Campaigns**: A graph that triggers on "New Lead", sends Day 1 SMS, delays, checks if they replied, sends Day 3 SMS, etc.
-    * **Post-Call Automations**: When the Voice Agent hangs up, it triggers a background LangGraph job: `if booking_intent == true -> send WhatsApp confirmation`.
+    * **Text Engine / Query Addressing**: A LangGraph graph that receives webhooks from GHL (or incoming SMS), routes to a RAG node (Knowledgebase), drafts a reply, and sends it back to GHL or via Twilio.
+    * **Agentic Lead Qualification**: A graph that evaluates a lead's intent based on their conversation history, and when qualified, pushes a "State Change" via API back into GHL to move them to the next pipeline stage.
+    * **Post-Call Automations**: When the Voice Agent hangs up, it triggers a background LangGraph job: analyze transcript, summarize, push notes to GHL Contact, and `if booking_intent == true -> send WhatsApp confirmation`.
 
 ---
 
@@ -43,8 +43,8 @@ To merge the UI server and your external configuration dashboard, we need a robu
 - **Frontend:** **Next.js (React)** or **Vue (Nuxt)**. Hosted on Vercel or Coolify.
 - **Authentication:** Supabase Auth.
 - **Two Views in One App:**
-    1. **SuperAdmin View (For You):** See all clients, aggregate revenue, manage their active phone numbers, tweak global prompts, view LangGraph Studio logs.
-    2. **Client View (For Them):** They log in and only see their CRM, their call logs, and a simple toggle menu to turn features (like SMS follow-up) on/off.
+    1. **SuperAdmin View (For You):** See all clients, GHL Sub-Account mappings, manage their active phone numbers, tweak global prompts, view LangGraph Studio logs.
+    2. **Client View (For Them):** They log in and configure *only* what GHL doesn't handle. They upload their Knowledge Base PDFs, set their Cal.com link, and tweak their Voice Agent's personality. They do *not* see CRM data here, because they live in GHL for that.
 
 ---
 

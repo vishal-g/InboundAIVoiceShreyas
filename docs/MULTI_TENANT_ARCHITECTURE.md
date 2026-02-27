@@ -1,6 +1,6 @@
-# 🚀 Multi-Tenant AI Automation Platform — Architecture Strategy
+# 🚀 Multi-Tenant Omnichannel AI Automation Platform — Architecture Strategy
 
-This document outlines the strategic roadmap to evolve the current standalone voice agent into a comprehensive, multi-tenant B2B platform that replaces n8n, centralizes dashboards, and enables rapid client onboarding.
+This document outlines the strategic roadmap to evolve the current standalone voice agent into a comprehensive, multi-tenant B2B **Omnichannel AI Platform**. This platform replaces n8n to act as the central "Agentic Brain" for both inbound/outbound Voice AND all text-based interactions (WhatsApp, SMS, LiveChat, Facebook, Instagram) managed through GoHighLevel (GHL).
 
 ---
 
@@ -29,10 +29,10 @@ LangGraph is built exactly for this. It models stateful, multi-actor application
 
 1. **State Persistence**: LangGraph natively saves "checkpoints" to a database (we can map this to Supabase). This means a workflow can sleep for 3 days (e.g., waiting for an appointment), wake up, and continue exactly where it left off.
 2. **Visual Debugging**: **LangGraph Studio** gives you a visual UI to see every step the workflow took, replay errors, and see what the LLM thought at any given node. It gives you the "n8n visual feel" but with pure Python code.
-3. **The Workflows**:
-    * **Text Engine / Query Addressing**: A LangGraph graph that receives webhooks from GHL (or incoming SMS), routes to a RAG node (Knowledgebase), drafts a reply, and sends it back to GHL or via Twilio.
-    * **Agentic Lead Qualification**: A graph that evaluates a lead's intent based on their conversation history, and when qualified, pushes a "State Change" via API back into GHL to move them to the next pipeline stage.
-    * **Post-Call Automations**: When the Voice Agent hangs up, it triggers a background LangGraph job: analyze transcript, summarize, push notes to GHL Contact, and `if booking_intent == true -> send WhatsApp confirmation`.
+3. **The Omnichannel Workflows**:
+    * **Text Engine / Query Addressing (All Channels)**: A LangGraph graph that receives webhooks from GHL whenever an interaction occurs (WhatsApp, SMS, LiveChat, FB, Insta). It routes the message to a RAG node (Knowledgebase), drafts a context-aware reply, and pushes it back to GHL to send to the user.
+    * **Agentic Lead Qualification**: A graph that evaluates a lead's intent based on their text or voice conversation history, and when qualified, pushes a "State Change" via API back into GHL to move them to the next pipeline stage.
+    * **Voice-Triggered Automations**: When the Voice Agent hangs up (or calls a specific function tool mid-call), it triggers a background LangGraph job: analyze transcript, summarize, push notes to GHL Contact, and trigger subsequent text workflows (like `if booking_intent == true -> send WhatsApp confirmation via GHL`).
 
 ---
 

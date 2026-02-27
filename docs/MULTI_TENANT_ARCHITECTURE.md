@@ -10,10 +10,12 @@ To keep your overhead near zero, you must avoid deploying separate instances/cod
 
 ### How it works alongside GHL:
 1. **GHL as the Source of Truth**: GoHighLevel (GHL) remains your primary CRM for lead management, pipelines, and basic standard automations.
-2. **Database-Driven Agent Config**: We map GHL Sub-Accounts to our system. We migrate agent-specific configurations to Supabase tables.
-    * `clients`: ID, GHL Sub-Account ID, Name, Plan, active status.
-    * `client_settings`: API keys, LLM preferences, Twilio/SIP phone numbers assigned to them.
-3. **Dynamic Routing**: When a call or SMS comes in, the system looks up the destination phone number in the DB to immediately identify the `client_id` and loads their specific settings, prompts, and knowledge base dynamically.
+2. **The 3-Tier Database (Agency Model)**: We map the exact same Agency -> Sub-Account structure that GHL uses into Supabase.
+    * `agencies`: ID, Name, Subscription Status (Allows allowing multiple Super Admins per Agency).
+    * `sub_accounts`: ID, Agency_ID, GHL Sub-Account ID, Name.
+    * `users`: ID, Role (`super_admin`, `sub_account_user`), Agency_ID, Sub_Account_ID.
+    * `sub_account_settings`: API keys, LLM preferences, Twilio/SIP phone numbers assigned to them.
+3. **Dynamic Routing**: When a call or SMS comes in, the system looks up the destination phone number in the DB to immediately identify the `sub_account_id` and loads their specific settings, prompts, and knowledge base dynamically.
 3. **Feature Flags**: Every client has a JSON chunk in the DB like `{"sms_followup": true, "appointment_reminders": false}`. Your code just checks this flag to enable/disable features without touching code.
 
 ---
@@ -42,9 +44,9 @@ To merge the UI server and your external configuration dashboard, we need a robu
 - **Backend:** Keep FastAPI (the current `ui_server.py` becomes `api_server.py`). It serves purely JSON REST APIs.
 - **Frontend:** **Next.js (React)** or **Vue (Nuxt)**. Hosted on Vercel or Coolify.
 - **Authentication:** Supabase Auth.
-- **Two Views in One App:**
-    1. **SuperAdmin View (For You):** See all clients, GHL Sub-Account mappings, manage their active phone numbers, tweak global prompts, view LangGraph Studio logs.
-    2. **Client View (For Them):** They log in and configure *only* what GHL doesn't handle. They upload their Knowledge Base PDFs, set their Cal.com link, and tweak their Voice Agent's personality. They do *not* see CRM data here, because they live in GHL for that.
+- **Role-Based Access Control (RBAC):**
+    1. **SuperAdmin View (For You & Partners):** Any user with `role="super_admin"` sees the Agency view. You see all Sub-Accounts, aggregate usage, manage global phone number inventory, and view LangGraph logs.
+    2. **Sub-Account View (For Your Clients):** A user with `role="sub_account_user"` logs in and *only* configures their specific instance. They upload Knowledge Base PDFs, set their Cal.com link, and tweak their Voice Agent's personality. They do *not* see CRM data here (they use GHL for that).
 
 ---
 

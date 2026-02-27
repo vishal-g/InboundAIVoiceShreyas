@@ -1,4 +1,8 @@
-import { login, signup } from './actions'
+'use client'
+
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/utils/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -6,13 +10,38 @@ import {
     Card,
     CardContent,
     CardDescription,
-    CardFooter,
     CardHeader,
     CardTitle,
 } from '@/components/ui/card'
 
-export default async function LoginPage(props: { searchParams: Promise<{ message?: string }> }) {
-    const searchParams = await props.searchParams;
+export default function LoginPage() {
+    const [email, setEmail] = useState('')
+    const [password, setPassword] = useState('')
+    const [error, setError] = useState('')
+    const [loading, setLoading] = useState(false)
+    const router = useRouter()
+
+    async function handleLogin(e: React.FormEvent) {
+        e.preventDefault()
+        setLoading(true)
+        setError('')
+
+        const supabase = createClient()
+        const { error: authError } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+        })
+
+        if (authError) {
+            setError(authError.message || 'Could not authenticate user')
+            setLoading(false)
+            return
+        }
+
+        // Login succeeded — cookies are set by the browser client automatically
+        router.push('/dashboard')
+        router.refresh()
+    }
 
     return (
         <div className="flex min-h-svh items-center justify-center bg-muted/50 p-6 md:p-10">
@@ -24,7 +53,7 @@ export default async function LoginPage(props: { searchParams: Promise<{ message
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <form className="grid gap-4">
+                    <form onSubmit={handleLogin} className="grid gap-4">
                         <div className="grid gap-2">
                             <Label htmlFor="email">Email</Label>
                             <Input
@@ -32,6 +61,8 @@ export default async function LoginPage(props: { searchParams: Promise<{ message
                                 name="email"
                                 type="email"
                                 placeholder="m@example.com"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
                                 required
                             />
                         </div>
@@ -39,18 +70,21 @@ export default async function LoginPage(props: { searchParams: Promise<{ message
                             <div className="flex items-center">
                                 <Label htmlFor="password">Password</Label>
                             </div>
-                            <Input id="password" name="password" type="password" required />
+                            <Input
+                                id="password"
+                                name="password"
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                            />
                         </div>
-                        {searchParams?.message && (
-                            <p className="text-sm text-red-500 font-medium">{searchParams.message}</p>
+                        {error && (
+                            <p className="text-sm text-red-500 font-medium">{error}</p>
                         )}
-                        <Button formAction={login} className="w-full bg-slate-900 text-white hover:bg-slate-800">
-                            Login
+                        <Button type="submit" className="w-full bg-slate-900 text-white hover:bg-slate-800" disabled={loading}>
+                            {loading ? 'Signing in...' : 'Login'}
                         </Button>
-                        {/* Keeping signup hidden unless explicitly needed by an admin */}
-                        {/* <Button formAction={signup} variant="outline" className="w-full">
-              Sign up
-            </Button> */}
                     </form>
                 </CardContent>
             </Card>

@@ -102,10 +102,7 @@ Don't build this all at once. Here is the safest integration path:
 * Build a FastAPI webhook proxy to intercept GHL calls and trigger the respective LangGraph/Python nodes.
 * Tie the workflows to the multi-tenant Database (so they react per client).
 
-### Phase 3: Long-Running Automations (2 Weeks)
-* Implement LangGraph persistent checkpoints in Supabase.
-* Migrate long-running drip sequences to Python background tasks using temporal/celery or native asyncio queues.
-
-### Phase 4: Frontend Overhaul (Ongoing)
+### Phase 3: Frontend Overhaul (Ongoing)
 * Build the Next.js Unified Dashboard.
-* Integrate Langgraph Studio for visual workflow debugging.
+* Hook up API endpoints to the database for Sub-Account management.
+* Integrate Langgraph Studio tracing logs directly into the UI.

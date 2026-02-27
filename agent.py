@@ -85,7 +85,7 @@ def get_live_config(phone_number: str | None = None):
             except Exception as e:
                 logger.error(f"[CONFIG] Failed to read {path}: {e}")
 
-    return {
+    resolved = {
         "agent_instructions":       config.get("agent_instructions", ""),
         "stt_min_endpointing_delay":config.get("stt_min_endpointing_delay", 0.05),
         "llm_model":                config.get("llm_model", "gpt-4o-mini"),
@@ -97,8 +97,12 @@ def get_live_config(phone_number: str | None = None):
         "stt_language":             config.get("stt_language", "unknown"),
         "lang_preset":              config.get("lang_preset", "multilingual"),
         "max_turns":                config.get("max_turns", 25),
-        **config,
     }
+    # Merge extra config keys without overwriting resolved values
+    for k, v in config.items():
+        if k not in resolved:
+            resolved[k] = v
+    return resolved
 
 
 # ── Token counter (#11) ───────────────────────────────────────────────────────
@@ -861,22 +865,27 @@ async def entrypoint(ctx: JobContext):
                 logger.warning(f"[N8N] Webhook failed: {e}")
 
         # Save to Supabase
-        from db import save_call_log
-        save_call_log(
-            phone=caller_phone,
-            duration=duration,
-            transcript=transcript_text,
-            summary=booking_status_msg,
-            recording_url=recording_url,
-            caller_name=agent_tools.caller_name or "",
-            sentiment=sentiment,
-            estimated_cost_usd=estimated_cost,
-            call_date=call_dt.date().isoformat(),
-            call_hour=call_dt.hour,
-            call_day_of_week=call_dt.strftime("%A"),
-            was_booked=bool(agent_tools.booking_intent),
-            interrupt_count=interrupt_count,
-        )
+        logger.info(f"[SHUTDOWN] Saving call log to Supabase for {caller_phone} (duration={duration}s)")
+        try:
+            from db import save_call_log
+            result = save_call_log(
+                phone=caller_phone,
+                duration=duration,
+                transcript=transcript_text,
+                summary=booking_status_msg,
+                recording_url=recording_url,
+                caller_name=agent_tools.caller_name or "",
+                sentiment=sentiment,
+                estimated_cost_usd=estimated_cost,
+                call_date=call_dt.date().isoformat(),
+                call_hour=call_dt.hour,
+                call_day_of_week=call_dt.strftime("%A"),
+                was_booked=bool(agent_tools.booking_intent),
+                interrupt_count=interrupt_count,
+            )
+            logger.info(f"[SHUTDOWN] save_call_log result: {result}")
+        except Exception as e:
+            logger.error(f"[SHUTDOWN] save_call_log EXCEPTION: {e}")
 
     ctx.add_shutdown_callback(unified_shutdown_hook)
 

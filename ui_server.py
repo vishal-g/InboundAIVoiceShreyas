@@ -24,7 +24,7 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.responses import HTMLResponse, PlainTextResponse
 
-from config import get_settings, read_config_json, write_config_json
+from core.config import get_settings, read_config_json, write_config_json
 
 load_dotenv()
 
@@ -79,7 +79,7 @@ def _ensure_supabase_env():
 async def api_get_logs():
     """Fetch the latest call logs from Supabase."""
     _ensure_supabase_env()
-    import db
+    from services import db
     try:
         return db.fetch_call_logs(limit=50)
     except Exception as e:
@@ -117,7 +117,7 @@ async def api_get_transcript(log_id: str):
 async def api_get_bookings():
     """Fetch confirmed bookings for the calendar view."""
     _ensure_supabase_env()
-    import db
+    from services import db
     try:
         return db.fetch_bookings()
     except Exception as e:
@@ -129,7 +129,7 @@ async def api_get_bookings():
 async def api_get_stats():
     """Return aggregate dashboard statistics."""
     _ensure_supabase_env()
-    import db
+    from services import db
     try:
         return db.fetch_stats()
     except Exception as e:

@@ -17,8 +17,8 @@ import pytz
 from livekit import api
 from livekit.agents import llm
 
-from calendar_tools import get_available_slots, create_booking
-from utils import normalize_email
+from services.calendar_tools import get_available_slots, create_booking
+from core.utils import normalize_email
 
 logger = logging.getLogger("agent-tools")
 

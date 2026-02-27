@@ -12,3 +12,7 @@ __pycache__/
 .vscode/
 .idea/
 .DS_Store
+
+# Logs and configs
+*.log
+configs/

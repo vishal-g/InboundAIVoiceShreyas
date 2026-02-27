@@ -29,9 +29,9 @@ from agents.base import (
     unified_shutdown_hook,
     upsert_active_call,
 )
-from config import get_language_instruction, get_live_config
-from tools import AgentTools
-from utils import count_tokens, get_ist_time_context, is_rate_limited
+from core.config import get_language_instruction, get_live_config
+from agents.tools import AgentTools
+from core.utils import count_tokens, get_ist_time_context, is_rate_limited
 
 logger = logging.getLogger("outbound-agent")
 

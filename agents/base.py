@@ -21,15 +21,15 @@ from livekit import api
 from livekit.agents import Agent, AgentSession, JobContext, RoomInputOptions, llm
 from livekit.plugins import openai, sarvam, silero
 
-from config import get_live_config, get_language_instruction, get_settings
-from notify import (
+from core.config import get_live_config, get_language_instruction, get_settings
+from services.notify import (
     notify_booking_confirmed,
     notify_booking_cancelled,
     notify_call_no_booking,
     notify_agent_error,
 )
-from tools import AgentTools
-from utils import count_tokens, get_ist_time_context, is_rate_limited
+from agents.tools import AgentTools
+from core.utils import count_tokens, get_ist_time_context, is_rate_limited
 
 logger = logging.getLogger("agent-base")
 
@@ -425,7 +425,7 @@ async def unified_shutdown_hook(
     # ── 1. Booking ────────────────────────────────────────────────────────
     booking_status_msg = "No booking"
     if agent_tools.booking_intent:
-        from calendar_tools import async_create_booking
+        from services.calendar_tools import async_create_booking
         intent = agent_tools.booking_intent
         result = await async_create_booking(
             start_time=intent["start_time"],
@@ -551,7 +551,7 @@ async def unified_shutdown_hook(
     # ── 9. Save to Supabase ───────────────────────────────────────────────
     logger.info(f"[SHUTDOWN] Saving call log for {caller_phone} (duration={duration}s)")
     try:
-        from db import save_call_log
+        from services.db import save_call_log
         result = save_call_log(
             phone=caller_phone,
             duration=duration,

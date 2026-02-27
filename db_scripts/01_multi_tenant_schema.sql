@@ -44,15 +44,33 @@ CREATE TABLE IF NOT EXISTS sub_account_settings (
 );
 
 -- 5. Update existing tables to include sub_account_id
+-- We use a DO block to avoid errors if the bookings or call_stats tables don't exist yet
 ALTER TABLE call_logs ADD COLUMN IF NOT EXISTS sub_account_id UUID REFERENCES sub_accounts(id) ON DELETE CASCADE;
-ALTER TABLE bookings ADD COLUMN IF NOT EXISTS sub_account_id UUID REFERENCES sub_accounts(id) ON DELETE CASCADE;
-ALTER TABLE call_stats ADD COLUMN IF NOT EXISTS sub_account_id UUID REFERENCES sub_accounts(id) ON DELETE CASCADE;
+
+DO $$
+BEGIN
+    IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'bookings') THEN
+        ALTER TABLE bookings ADD COLUMN IF NOT EXISTS sub_account_id UUID REFERENCES sub_accounts(id) ON DELETE CASCADE;
+    END IF;
+    
+    IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'call_stats') THEN
+        ALTER TABLE call_stats ADD COLUMN IF NOT EXISTS sub_account_id UUID REFERENCES sub_accounts(id) ON DELETE CASCADE;
+    END IF;
+END $$;
 
 -- Create indexes for performance on lookups
 CREATE INDEX IF NOT EXISTS idx_sub_account_settings_assigned_number ON sub_account_settings(assigned_number);
 CREATE INDEX IF NOT EXISTS idx_call_logs_sub_account_id ON call_logs(sub_account_id);
-CREATE INDEX IF NOT EXISTS idx_bookings_sub_account_id ON bookings(sub_account_id);
-CREATE INDEX IF NOT EXISTS idx_call_stats_sub_account_id ON call_stats(sub_account_id);
+
+DO $$
+BEGIN
+    IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'bookings') THEN
+        CREATE INDEX IF NOT EXISTS idx_bookings_sub_account_id ON bookings(sub_account_id);
+    END IF;
+    IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'call_stats') THEN
+        CREATE INDEX IF NOT EXISTS idx_call_stats_sub_account_id ON call_stats(sub_account_id);
+    END IF;
+END $$;
 
 -- 6. Enable RLS (Row Level Security)
 ALTER TABLE agencies ENABLE ROW LEVEL SECURITY;

@@ -708,6 +708,8 @@ async def entrypoint(ctx: JobContext):
                 )
             )
 
+    _shutdown_done = False
+
     @ctx.room.on("participant_disconnected")
     def on_participant_disconnected(participant):
         global agent_is_speaking
@@ -720,6 +722,11 @@ async def entrypoint(ctx: JobContext):
     # ══════════════════════════════════════════════════════════════════════
 
     async def unified_shutdown_hook(shutdown_ctx: JobContext):
+        nonlocal _shutdown_done
+        if _shutdown_done:
+            logger.info("[SHUTDOWN] Already ran — skipping duplicate.")
+            return
+        _shutdown_done = True
         logger.info("[SHUTDOWN] Sequence started.")
 
         duration = int((datetime.now() - call_start_time).total_seconds())

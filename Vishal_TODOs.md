@@ -1,0 +1,31 @@
+- Multi tennancy voice ai dashboard
+- Multi tenancy admin dashboard for n8n workflows
+- Multi tenancy call logs dashboard
+- Multi tenancy call recordings dashboard
+- Multi tenancy call transcripts dashboard
+- Multi tenancy call summaries dashboard
+- Multi tenancy call metadata dashboard
+- Multi tenancy call tts voice dashboard
+- Multi tenancy call tts language dashboard
+- Multi tenancy call lang preset dashboard
+- Multi tenancy call livekit url dashboard
+- Multi tenancy call livekit api key dashboard
+- Multi tenancy call livekit api secret dashboard
+- Multi tenancy call openai api key dashboard
+- Multi tenancy call sarvam api key dashboard
+- Multi tenancy call cal api key dashboard
+- Multi tenancy call cal event type id dashboard
+- Multi tenancy call telegram bot token dashboard
+- Multi tenancy call telegram chat id dashboard
+- Multi tenancy call vobiz sip domain dashboard
+- Multi tenancy call vobiz username dashboard
+- Multi tenancy call vobiz password dashboard
+- Multi tenancy call vobiz outbound number dashboard
+- Multi tenancy call sip trunk id dashboard
+- Multi tenancy call supabase url dashboard
+- Multi tenancy call supabase key dashboard
+- Multi tenancy call first line dashboard
+- Multi tenancy call agent instructions dashboard
+
+- No duplication of settings in config.json, .env and supabase
+- 

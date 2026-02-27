@@ -23,9 +23,9 @@ CREATE TABLE IF NOT EXISTS sub_accounts (
 -- Note: Supabase Auth already has an auth.users table. This is the public profile mapping.
 CREATE TABLE IF NOT EXISTS user_roles (
     user_id UUID PRIMARY KEY, -- References auth.users(id)
-    agency_id UUID REFERENCES agencies(id) ON DELETE CASCADE,
-    sub_account_id UUID REFERENCES sub_accounts(id) ON DELETE CASCADE, -- NULL if Super Admin
-    role TEXT NOT NULL CHECK (role IN ('super_admin', 'sub_account_user')),
+    agency_id UUID REFERENCES agencies(id) ON DELETE CASCADE, -- NULL if Platform Admin
+    sub_account_id UUID REFERENCES sub_accounts(id) ON DELETE CASCADE, -- NULL if Agency Admin or Platform Admin
+    role TEXT NOT NULL CHECK (role IN ('platform_admin', 'agency_admin', 'sub_account_user')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -62,28 +62,34 @@ ALTER TABLE user_roles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE call_logs ENABLE ROW LEVEL SECURITY;
 
 -- 7. Define RLS Policies for true Multi-Tenancy Security
--- Super Admins can see everything in their Agency. Sub-Account Users can only see their specific Sub-Account.
+-- Platform Admins see everything. Agency Admins see everything in their Agency. Sub-Account Users see only their specific Sub-Account.
 
--- Sub Accounts: Super Admins see all in agency, Users see only their own
+-- Sub Accounts
 CREATE POLICY "allow_read_sub_accounts" ON sub_accounts FOR SELECT TO authenticated
 USING (
-    agency_id IN (SELECT agency_id FROM user_roles WHERE user_id = auth.uid() AND role = 'super_admin') 
+    EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'platform_admin')
+    OR 
+    agency_id IN (SELECT agency_id FROM user_roles WHERE user_id = auth.uid() AND role = 'agency_admin') 
     OR 
     id IN (SELECT sub_account_id FROM user_roles WHERE user_id = auth.uid() AND role = 'sub_account_user')
 );
 
--- Settings: Super Admins see all in agency, Users see only their own
+-- Settings
 CREATE POLICY "allow_read_settings" ON sub_account_settings FOR SELECT TO authenticated
 USING (
-    sub_account_id IN (SELECT id FROM sub_accounts WHERE agency_id IN (SELECT agency_id FROM user_roles WHERE user_id = auth.uid() AND role = 'super_admin'))
+    EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'platform_admin')
+    OR
+    sub_account_id IN (SELECT id FROM sub_accounts WHERE agency_id IN (SELECT agency_id FROM user_roles WHERE user_id = auth.uid() AND role = 'agency_admin'))
     OR 
     sub_account_id IN (SELECT sub_account_id FROM user_roles WHERE user_id = auth.uid() AND role = 'sub_account_user')
 );
 
--- Call Logs: Super Admins see all in agency, Users see only their own
+-- Call Logs
 CREATE POLICY "allow_read_call_logs" ON call_logs FOR SELECT TO authenticated
 USING (
-    sub_account_id IN (SELECT id FROM sub_accounts WHERE agency_id IN (SELECT agency_id FROM user_roles WHERE user_id = auth.uid() AND role = 'super_admin'))
+    EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'platform_admin')
+    OR
+    sub_account_id IN (SELECT id FROM sub_accounts WHERE agency_id IN (SELECT agency_id FROM user_roles WHERE user_id = auth.uid() AND role = 'agency_admin'))
     OR 
     sub_account_id IN (SELECT sub_account_id FROM user_roles WHERE user_id = auth.uid() AND role = 'sub_account_user')
 );

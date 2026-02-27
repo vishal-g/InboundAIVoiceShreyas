@@ -10,10 +10,10 @@ To keep your overhead near zero, you must avoid deploying separate instances/cod
 
 ### How it works alongside GHL:
 1. **GHL as the Source of Truth**: GoHighLevel (GHL) remains your primary CRM for lead management, pipelines, and basic standard automations.
-2. **The 3-Tier Database (Agency Model)**: We map the exact same Agency -> Sub-Account structure that GHL uses into Supabase.
-    * `agencies`: ID, Name, Subscription Status (Allows allowing multiple Super Admins per Agency).
+2. **The 4-Tier Database (Platform -> Agency -> Sub-Account)**: We map the exact same structure that GHL uses, plus your overarching "Platform" level.
+    * `agencies`: ID, Name, Subscription Status. (You can have partner agencies on your system).
     * `sub_accounts`: ID, Agency_ID, GHL Sub-Account ID, Name.
-    * `users`: ID, Role (`super_admin`, `sub_account_user`), Agency_ID, Sub_Account_ID.
+    * `users`: ID, Role (`platform_admin`, `agency_admin`, `sub_account_user`), Agency_ID, Sub_Account_ID.
     * `sub_account_settings`: API keys, LLM preferences, Twilio/SIP phone numbers assigned to them.
 3. **Dynamic Routing**: When a call or SMS comes in, the system looks up the destination phone number in the DB to immediately identify the `sub_account_id` and loads their specific settings, prompts, and knowledge base dynamically.
 3. **Feature Flags**: Every client has a JSON chunk in the DB like `{"sms_followup": true, "appointment_reminders": false}`. Your code just checks this flag to enable/disable features without touching code.
@@ -62,17 +62,18 @@ To ensure clients successfully set up their agents (`09-individual-step-progress
 - **Analytics (`01/02-Analytics`):** Top-level KPI cards (Total Calls, Minutes Used, Appointments Booked, SMS Sent) powered by efficient Supabase database views.
 
 ### Role-Based Access Control (RBAC):
-    1. **SuperAdmin View (For You & Partners):** Any user with `role="super_admin"` sees the Agency view. You see all Sub-Accounts, aggregate usage, manage global phone number inventory, and view LangGraph logs.
-    2. **Sub-Account View (For Your Clients):** A user with `role="sub_account_user"` logs in and *only* configures their specific instance. They upload Knowledge Base PDFs, set their Cal.com link, and tweak their Voice Agent's personality. They do *not* see CRM data here (they use GHL for that).
+    1. **Platform Admin View (For You - "Super Super Admin"):** Any user with `role="platform_admin"` sees the entire platform. You see all Agencies, all Sub-Accounts, aggregate usage, billing limits, and system-wide LangGraph logs.
+    2. **Agency Admin View (For Your Partners):** A user with `role="agency_admin"` sees only the Sub-Accounts under their specific Agency. They can manage their clients, provision numbers (manually), and see their aggregate usage.
+    3. **Sub-Account View (For End Clients):** A user with `role="sub_account_user"` logs in and *only* configures their specific instance. They upload Knowledge Base PDFs, set their Cal.com link, and tweak their Voice Agent's personality. They do *not* see CRM data here (they use GHL for that).
 
 ---
 
-## ⚡ 4. Rapid Onboarding Flow
+## ⚡ 4. Manual Onboarding Flow
 
 With this architecture, onboarding a new client taking < 5 minutes:
-1. Add Client in SuperAdmin dashboard.
-2. Platform auto-purchases a phone number via Twilio/Vobiz API and maps it to their `client_id`.
-3. Client logs in, uploads a PDF (knowledge base), and pasts their Cal.com link.
+1. Add Sub-Account under an Agency in the dashboard.
+2. **Manual Phone Provisioning (Default)**: You or the Agency Admin manually configures a Twilio/Vobiz number and adds it to the client's `assigned_number` settings in the dashboard.
+3. Client logs in, uploads a PDF (knowledge base), and pastes their Cal.com link.
 4. **Done.** The agent and LangGraph workflows are instantly live for their number.
 
 ---

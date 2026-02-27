@@ -141,6 +141,7 @@ async def async_create_booking(
     caller_name: str,
     caller_phone: str,
     notes: str = "",
+    caller_email: str = "",
 ) -> dict:
     """
     Book a slot — uses Google Calendar if configured, else Cal.com v2.
@@ -153,27 +154,39 @@ async def async_create_booking(
     if gcal_id and os.path.exists(gcal_creds):
         return await _create_booking_gcal(start_time, caller_name, caller_phone, notes, gcal_id, gcal_creds)
 
-    return await _create_booking_calcom(start_time, caller_name, caller_phone, notes)
+    return await _create_booking_calcom(start_time, caller_name, caller_phone, notes, caller_email)
 
 
 async def _create_booking_calcom(
-    start_time: str, caller_name: str, caller_phone: str, notes: str
+    start_time: str, caller_name: str, caller_phone: str, notes: str, caller_email: str = ""
 ) -> dict:
     creds = get_cal_creds()
+    # Use provided email, or try to extract from notes, or fallback to placeholder
+    import re as _re
+    if caller_email and "@" in caller_email:
+        attendee_email = caller_email
+    else:
+        email_match = _re.search(r'[\w.+-]+@[\w-]+\.[\w.]+', notes or "")
+        attendee_email = email_match.group(0) if email_match else f"{caller_phone.replace('+','').replace(' ','')}@phone.voiceagent.com"
+
     payload = {
         "eventTypeId": creds["event_id"],
         "start": start_time,
         "attendee": {
             "name":        caller_name,
-            "email":       f"{caller_phone.replace('+','').replace(' ','')}@voiceagent.placeholder",
+            "email":       attendee_email,
             "phoneNumber": caller_phone,
             "timeZone":    "Asia/Kolkata",
             "language":    "en",
         },
         "bookingFieldsResponses": {
+            "name":  caller_name,
+            "email": attendee_email,
+            "phone": caller_phone,
             "notes": notes or f"Booked via AI voice agent. Phone: {caller_phone}",
         },
     }
+    logger.info(f"[CAL] Booking payload: email={attendee_email}, name={caller_name}, phone={caller_phone}")
     try:
         async with httpx.AsyncClient(timeout=8.0) as client:
             resp = await client.post(

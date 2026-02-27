@@ -44,9 +44,9 @@ CREATE TABLE IF NOT EXISTS sub_account_settings (
 );
 
 -- 5. Update existing tables to include sub_account_id
-ALTER TABLE call_logs RENAME COLUMN client_id TO sub_account_id;
-ALTER TABLE bookings RENAME COLUMN client_id TO sub_account_id;
-ALTER TABLE call_stats RENAME COLUMN client_id TO sub_account_id;
+ALTER TABLE call_logs ADD COLUMN IF NOT EXISTS sub_account_id UUID REFERENCES sub_accounts(id) ON DELETE CASCADE;
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS sub_account_id UUID REFERENCES sub_accounts(id) ON DELETE CASCADE;
+ALTER TABLE call_stats ADD COLUMN IF NOT EXISTS sub_account_id UUID REFERENCES sub_accounts(id) ON DELETE CASCADE;
 
 -- Create indexes for performance on lookups
 CREATE INDEX IF NOT EXISTS idx_sub_account_settings_assigned_number ON sub_account_settings(assigned_number);

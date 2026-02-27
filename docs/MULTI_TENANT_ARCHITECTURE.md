@@ -94,12 +94,13 @@ Don't build this all at once. Here is the safest integration path:
     * `Launch_Campaign.json`
     * `Get_Lead_Details.json`
     * `Make_Outbound_Call.json`
+    * `Appointment_Booking_Functions.json`
 * Build a FastAPI webhook proxy to intercept GHL calls and trigger the respective LangGraph/Python nodes.
 * Tie the workflows to the multi-tenant Database (so they react per client).
 
 ### Phase 3: Long-Running Automations (2 Weeks)
 * Implement LangGraph persistent checkpoints in Supabase.
-* Migrate `Launch_Campaign` (drip sequences) and `Appointment_Booking_Functions` (reminders) to Python background tasks.
+* Migrate long-running drip sequences to Python background tasks using temporal/celery or native asyncio queues.
 
 ### Phase 4: Frontend Overhaul (Ongoing)
 * Build the Next.js Unified Dashboard.

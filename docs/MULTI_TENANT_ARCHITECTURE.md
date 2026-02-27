@@ -36,15 +36,32 @@ LangGraph is built exactly for this. It models stateful, multi-actor application
 
 ---
 
-## 🖥️ 3. The Unified Dashboard Architecture
-
-To merge the UI server and your external configuration dashboard, we need a robust web framework. While FastAPI + Jinja2 is great for a V1, a multi-tenant platform demands a modern frontend.
-
-**The Stack Proposal:**
-- **Backend:** Keep FastAPI (the current `ui_server.py` becomes `api_server.py`). It serves purely JSON REST APIs.
-- **Frontend:** **Next.js (React)** or **Vue (Nuxt)**. Hosted on Vercel or Coolify.
+### The Tech Stack (Dashboard)
+- **Backend:** FastAPI (`ui_server.py` becomes `api_server.py`). It serves purely JSON REST APIs.
+- **Frontend Framework:** **Next.js (React)** with the App Router.
+- **UI Components:** **Tailwind CSS + Shadcn UI** (for a premium, flexible, and accessible interface).
 - **Authentication:** Supabase Auth.
-- **Role-Based Access Control (RBAC):**
+- **Charts/Analytics:** **Recharts** (React charting library) driven by Supabase aggregate SQL views.
+
+### Flexibility & Modular Navigation
+To support the extensive feature set (Analytics, AI Configs, Prompt Management, Knowledgebase, Webinar Setup, DB Activation), the frontend must be deeply modular.
+- **Dynamic Routing:** We will use Next.js dynamic routes (`/dashboard/[sub_account_id]/[section]`).
+- **Sidebar Configuration:** The sidebar navigation menu will be driven by a central JSON configuration. If you need to add a new tool (e.g., "Facebook Lead Forms"), you simply add one object to the navigation array, and the UI dynamically renders the new subsection.
+
+### The Onboarding Checklist System
+To ensure clients successfully set up their agents (`09-individual-step-progress.png`, `14-what-to-do.png`), we will build a gamified onboarding engine:
+1. **State Tracking:** In Supabase, the `sub_accounts` table will have a `jsonb` column called `onboarding_progress`.
+2. **Step Verification:** 
+   - Step 1: Add Credentials (turns green when API validates Twilio/GHL).
+   - Step 2: Upload Knowledge Base (turns green when RAG embeddings are generated).
+   - Step 3: Deploy AI Rep (turns green when `is_active` boolean is flipped).
+3. **UI Reflection:** The frontend will calculate a percentage (e.g., "60% Complete") and block deployment until necessary steps are green.
+
+### Debugging & Analytics Views
+- **Debugging (`10-debugging.png`):** A dedicated "Logs" page that pulls real-time transcripts, API errors, and LangGraph trace events from the database. It will feature a search/filter bar to easily find "Failed Calls" or "Unanswered SMS".
+- **Analytics (`01/02-Analytics`):** Top-level KPI cards (Total Calls, Minutes Used, Appointments Booked, SMS Sent) powered by efficient Supabase database views.
+
+### Role-Based Access Control (RBAC):
     1. **SuperAdmin View (For You & Partners):** Any user with `role="super_admin"` sees the Agency view. You see all Sub-Accounts, aggregate usage, manage global phone number inventory, and view LangGraph logs.
     2. **Sub-Account View (For Your Clients):** A user with `role="sub_account_user"` logs in and *only* configures their specific instance. They upload Knowledge Base PDFs, set their Cal.com link, and tweak their Voice Agent's personality. They do *not* see CRM data here (they use GHL for that).
 

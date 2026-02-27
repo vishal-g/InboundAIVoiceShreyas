@@ -28,6 +28,7 @@ def save_call_log(
     phone: str,
     duration: int,
     transcript: str,
+    sub_account_id: str | None = None,
     summary: str = "",
     recording_url: str = "",
     caller_name: str = "",
@@ -60,6 +61,7 @@ def save_call_log(
             "was_booked":        was_booked,
             "interrupt_count":   interrupt_count,
         }
+        if sub_account_id:          data["sub_account_id"]        = sub_account_id
         if recording_url:           data["recording_url"]         = recording_url
         if caller_name:             data["caller_name"]            = caller_name
         if estimated_cost_usd is not None: data["estimated_cost_usd"] = estimated_cost_usd
@@ -132,3 +134,45 @@ def fetch_stats() -> dict:
     except Exception as e:
         logger.error(f"Failed to fetch stats: {e}")
         return {"total_calls": 0, "total_bookings": 0, "avg_duration": 0, "booking_rate": 0}
+
+def get_sub_account_by_number(phone: str) -> dict | None:
+    """
+    Fetches the sub_account ID and settings for a given assigned phone number.
+    Returns None if no matching sub-account is found.
+    """
+    supabase = get_supabase()
+    if not supabase:
+        return None
+    try:
+        # We look up the sub_account_settings table by assigned_number
+        res = (
+            supabase.table("sub_account_settings")
+            .select("*, sub_accounts(name, ghl_sub_account_id)")
+            .eq("assigned_number", phone)
+            .execute()
+        )
+        if hasattr(res, 'data') and len(res.data) > 0:
+            return res.data[0]
+        return None
+    except Exception as e:
+        logger.error(f"Failed to fetch sub-account config for number {phone}: {e}")
+        return None
+
+def update_sub_account_settings(sub_account_id: str, settings: dict) -> dict:
+    """
+    Updates the settings for a specific sub-account.
+    """
+    supabase = get_supabase()
+    if not supabase:
+        return {"success": False, "message": "Supabase client failed"}
+    try:
+        res = (
+            supabase.table("sub_account_settings")
+            .update(settings)
+            .eq("sub_account_id", sub_account_id)
+            .execute()
+        )
+        return {"success": True, "data": res.data}
+    except Exception as e:
+        logger.error(f"Failed to update settings for sub_account {sub_account_id}: {e}")
+        return {"success": False, "message": str(e)}

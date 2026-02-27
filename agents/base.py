@@ -184,10 +184,11 @@ def extract_caller_info(ctx: JobContext) -> tuple[str, str, str | None]:
     3. Participant identity (regex for phone number)
 
     Returns:
-        (caller_phone, caller_name, raw_phone_number)
+        (caller_phone, caller_name, destination_number)
     """
     phone_number = None
     caller_name = ""
+    destination_number = None
 
     # Try metadata first (outbound dispatch)
     metadata = ctx.job.metadata or ""
@@ -203,25 +204,30 @@ def extract_caller_info(ctx: JobContext) -> tuple[str, str, str | None]:
         if participant.name and participant.name not in ("", "Caller", "Unknown"):
             caller_name = participant.name
             logger.info(f"[CALLER-ID] Name from SIP: {caller_name}")
+            
+        attr = participant.attributes or {}
         if not phone_number:
-            attr = participant.attributes or {}
             phone_number = attr.get("sip.phoneNumber") or attr.get("phoneNumber")
         if not phone_number and "+" in identity:
             m = re.search(r"\+\d{7,15}", identity)
             if m:
                 phone_number = m.group()
+                
+        if not destination_number:
+            destination_number = attr.get("sip.callTo") or attr.get("sip.to") or attr.get("sip.calledNumber")
 
     caller_phone = phone_number or "unknown"
-    return caller_phone, caller_name, phone_number
+    return caller_phone, caller_name, destination_number
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Caller Memory
 # ══════════════════════════════════════════════════════════════════════════════
 
-async def get_caller_history(phone: str) -> str:
+async def get_caller_history(phone: str, sub_account_id: str | None = None) -> str:
     """
     Look up the caller's last interaction from Supabase.
+    Scoped to the specific sub-account so different clients don't see each other's history.
 
     Returns a system prompt fragment like:
     ``[CALLER HISTORY: Last call 2026-02-20. Summary: ...]``
@@ -233,10 +239,12 @@ async def get_caller_history(phone: str) -> str:
     try:
         from supabase import create_client
         sb = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
+        query = sb.table("call_logs").select("summary, created_at").eq("phone_number", phone)
+        if sub_account_id:
+            query = query.eq("sub_account_id", sub_account_id)
+            
         result = (
-            sb.table("call_logs")
-            .select("summary, created_at")
-            .eq("phone", phone)
+            query
             .order("created_at", desc=True)
             .limit(1)
             .execute()
@@ -406,6 +414,7 @@ async def unified_shutdown_hook(
     interrupt_count: int,
     caller_phone: str,
     caller_name: str,
+    sub_account_id: str | None = None,
 ) -> None:
     """
     Post-call cleanup — called when the participant disconnects or agent shuts down.
@@ -556,6 +565,7 @@ async def unified_shutdown_hook(
             phone=caller_phone,
             duration=duration,
             transcript=transcript_text,
+            sub_account_id=sub_account_id,
             summary=booking_status_msg,
             recording_url=recording_url,
             caller_name=agent_tools.caller_name or "",

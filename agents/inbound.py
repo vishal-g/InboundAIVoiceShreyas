@@ -115,16 +115,18 @@ async def inbound_entrypoint(ctx: JobContext) -> None:
     logger.info(f"[ROOM] Connected: {ctx.room.name}")
     logger.info(f"[ROOM] Job metadata: {ctx.job.metadata}")
 
-    caller_phone, caller_name, raw_phone = extract_caller_info(ctx)
-    logger.info(f"[CALLER] Phone: {caller_phone} | Name: {caller_name} | Raw: {raw_phone}")
+    caller_phone, caller_name, destination_phone = extract_caller_info(ctx)
+    logger.info(f"[CALLER] Phone: {caller_phone} | Name: {caller_name} | Destination: {destination_phone}")
 
     if is_rate_limited(caller_phone):
         logger.warning(f"[RATE-LIMIT] Blocked {caller_phone}")
         return
 
     # ── Config ────────────────────────────────────────────────────────────
-    live_config = get_live_config(caller_phone)
+    # For inbound calls, the dialed number is our system number (destination_phone)
+    live_config = get_live_config(destination_phone)
     apply_config_env_overrides(live_config)
+    sub_account_id = live_config.get("sub_account_id")
 
     tts_voice = live_config.get("tts_voice", "kavya")
     tts_language = live_config.get("tts_language", "hi-IN")
@@ -133,7 +135,7 @@ async def inbound_entrypoint(ctx: JobContext) -> None:
     logger.info(f"[CONFIG] First line: {live_config.get('first_line', '(default)')}")
 
     # ── Caller memory ────────────────────────────────────────────────────
-    history = await get_caller_history(caller_phone)
+    history = await get_caller_history(caller_phone, sub_account_id)
     if history:
         logger.info(f"[MEMORY] Loaded history for {caller_phone}: {history[:100]}...")
         live_config["agent_instructions"] = live_config.get("agent_instructions", "") + history
@@ -143,7 +145,7 @@ async def inbound_entrypoint(ctx: JobContext) -> None:
     # ── Tools ─────────────────────────────────────────────────────────────
     agent_tools = AgentTools(caller_phone=caller_phone, caller_name=caller_name)
     agent_tools._sip_identity = (
-        f"sip_{caller_phone.replace('+', '')}" if raw_phone else "inbound_caller"
+        f"sip_{caller_phone.replace('+', '')}" if destination_phone else "inbound_caller"
     )
     agent_tools.ctx_api = ctx.api
     agent_tools.room_name = ctx.room.name
@@ -290,6 +292,7 @@ async def inbound_entrypoint(ctx: JobContext) -> None:
             interrupt_count=interrupt_count,
             caller_phone=caller_phone,
             caller_name=caller_name,
+            sub_account_id=sub_account_id,
         )
         logger.info(f"[SHUTDOWN] ═══ Shutdown complete ═══")
 

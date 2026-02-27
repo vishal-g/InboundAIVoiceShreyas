@@ -18,8 +18,6 @@ from pydantic_settings import BaseSettings
 
 logger = logging.getLogger("config")
 
-CONFIG_FILE = "config.json"
-
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Pydantic BaseSettings — typed, validated .env loading
@@ -112,117 +110,58 @@ def get_settings() -> AppSettings:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# config.json helpers (dashboard-editable settings)
-# ══════════════════════════════════════════════════════════════════════════════
-
-def read_config_json() -> dict[str, Any]:
-    """
-    Read config.json and merge with env-based defaults for the dashboard UI.
-
-    Returns a dict with resolved values: config.json takes precedence over
-    .env for keys present in both.
-    """
-    config: dict[str, Any] = {}
-    if os.path.exists(CONFIG_FILE):
-        try:
-            with open(CONFIG_FILE, "r") as f:
-                config = json.load(f)
-        except Exception as e:
-            logger.error(f"[CONFIG] Failed to read {CONFIG_FILE}: {e}")
-
-    settings = get_settings()
-
-    def _val(key: str, env_key: str, default: Any = "") -> Any:
-        """config.json value if present, else env var, else default."""
-        return config.get(key) if config.get(key) else getattr(settings, env_key.lower(), default)
-
-    resolved: dict[str, Any] = {
-        "first_line":                _val("first_line", "FIRST_LINE", settings.first_line),
-        "agent_instructions":        _val("agent_instructions", "AGENT_INSTRUCTIONS", ""),
-        "stt_min_endpointing_delay": float(_val("stt_min_endpointing_delay", "STT_MIN_ENDPOINTING_DELAY", 0.6)),
-        "llm_model":                 _val("llm_model", "LLM_MODEL", "gpt-4o-mini"),
-        "tts_voice":                 _val("tts_voice", "TTS_VOICE", "kavya"),
-        "tts_language":              _val("tts_language", "TTS_LANGUAGE", "hi-IN"),
-        "livekit_url":               _val("livekit_url", "LIVEKIT_URL", ""),
-        "sip_trunk_id":              _val("sip_trunk_id", "SIP_TRUNK_ID", ""),
-        "livekit_api_key":           _val("livekit_api_key", "LIVEKIT_API_KEY", ""),
-        "livekit_api_secret":        _val("livekit_api_secret", "LIVEKIT_API_SECRET", ""),
-        "openai_api_key":            _val("openai_api_key", "OPENAI_API_KEY", ""),
-        "sarvam_api_key":            _val("sarvam_api_key", "SARVAM_API_KEY", ""),
-        "cal_api_key":               _val("cal_api_key", "CAL_API_KEY", ""),
-        "cal_event_type_id":         _val("cal_event_type_id", "CAL_EVENT_TYPE_ID", ""),
-        "telegram_bot_token":        _val("telegram_bot_token", "TELEGRAM_BOT_TOKEN", ""),
-        "telegram_chat_id":          _val("telegram_chat_id", "TELEGRAM_CHAT_ID", ""),
-        "supabase_url":              _val("supabase_url", "SUPABASE_URL", ""),
-        "supabase_key":              _val("supabase_key", "SUPABASE_KEY", ""),
-    }
-    # Merge extra config.json keys without overwriting resolved values
-    for k, v in config.items():
-        if k not in resolved:
-            resolved[k] = v
-    return resolved
-
-
-def write_config_json(data: dict[str, Any]) -> None:
-    """Merge new data into config.json and save."""
-    config = read_config_json()
-    config.update(data)
-    with open(CONFIG_FILE, "w") as f:
-        json.dump(config, f, indent=4)
-
-
-# ══════════════════════════════════════════════════════════════════════════════
 # Live config (used by agent at call time)
 # ══════════════════════════════════════════════════════════════════════════════
 
 def get_live_config(phone_number: str | None = None) -> dict[str, Any]:
     """
-    Load agent config — tries per-client file first, then default, then config.json.
-
-    Merge chain:
-        1. ``configs/{phone}.json`` (if exists)
-        2. ``configs/default.json`` (if exists)
-        3. ``config.json``
-
-    Returns a dict with all resolved settings.
+    Load agent config — fetches from Supabase using the assigned phone number.
+    Falls back to .env defaults if no DB config is found.
     """
-    config: dict[str, Any] = {}
-    paths: list[str] = []
+    # Import locally to avoid circular dependencies if services/db.py imports config.py
+    from services.db import get_sub_account_by_number
 
+    db_config: dict[str, Any] = {}
+    
     if phone_number and phone_number != "unknown":
-        clean = phone_number.replace("+", "").replace(" ", "")
-        paths.append(f"configs/{clean}.json")
-    paths += ["configs/default.json", CONFIG_FILE]
-
-    for path in paths:
-        if os.path.exists(path):
-            try:
-                with open(path, "r") as f:
-                    config = json.load(f)
-                    logger.info(f"[CONFIG] Loaded: {path}")
-                    break
-            except Exception as e:
-                logger.error(f"[CONFIG] Failed to read {path}: {e}")
+        # Format phone to match what should be in the DB (usually E.164 +1234567890)
+        clean_phone = phone_number.replace(" ", "")
+        if not clean_phone.startswith("+"):
+            clean_phone = "+" + clean_phone
+            
+        logger.info(f"[CONFIG] Fetching sub-account settings for number: {clean_phone}")
+        db_data = get_sub_account_by_number(clean_phone)
+        if db_data:
+            logger.info(f"[CONFIG] Successfully loaded DB config for number {clean_phone}")
+            db_config = db_data
+        else:
+            logger.warning(f"[CONFIG] No DB sub-account found for number: {clean_phone}. Using system defaults.")
 
     settings = get_settings()
+    
+    # Merge Database config over .env defaults
     resolved: dict[str, Any] = {
-        "agent_instructions":        config.get("agent_instructions", settings.agent_instructions),
-        "stt_min_endpointing_delay": config.get("stt_min_endpointing_delay", settings.stt_min_endpointing_delay),
-        "llm_model":                 config.get("llm_model", settings.llm_model),
-        "llm_provider":              config.get("llm_provider", settings.llm_provider),
-        "tts_voice":                 config.get("tts_voice", settings.tts_voice),
-        "tts_language":              config.get("tts_language", settings.tts_language),
-        "tts_provider":              config.get("tts_provider", settings.tts_provider),
-        "stt_provider":              config.get("stt_provider", settings.stt_provider),
-        "stt_language":              config.get("stt_language", settings.stt_language),
-        "lang_preset":               config.get("lang_preset", settings.lang_preset),
-        "max_turns":                 config.get("max_turns", settings.max_turns),
-        "first_line":                config.get("first_line", settings.first_line),
+        "sub_account_id":            db_config.get("sub_account_id"),
+        "agent_instructions":        db_config.get("agent_instructions", settings.agent_instructions),
+        "stt_min_endpointing_delay": db_config.get("stt_min_endpointing_delay", settings.stt_min_endpointing_delay),
+        "llm_model":                 db_config.get("llm_model", settings.llm_model),
+        "llm_provider":              db_config.get("llm_provider", settings.llm_provider),
+        "tts_voice":                 db_config.get("tts_voice", settings.tts_voice),
+        "tts_language":              db_config.get("tts_language", settings.tts_language),
+        "tts_provider":              db_config.get("tts_provider", settings.tts_provider),
+        "stt_provider":              db_config.get("stt_provider", settings.stt_provider),
+        "stt_language":              db_config.get("stt_language", settings.stt_language),
+        "lang_preset":               db_config.get("lang_preset", settings.lang_preset),
+        "max_turns":                 db_config.get("max_turns", settings.max_turns),
+        "first_line":                db_config.get("first_line", settings.first_line),
+        "cal_event_type_id":         db_config.get("cal_event_type_id", settings.cal_event_type_id),
     }
-    # Merge extra config keys
-    for k, v in config.items():
-        if k not in resolved:
-            resolved[k] = v
+    
+    # Include the nested agency/sub_account naming metadata if it was joined in the SQL view
+    if "sub_accounts" in db_config:
+        resolved["sub_account_name"] = db_config["sub_accounts"].get("name")
+        resolved["ghl_sub_account_id"] = db_config["sub_accounts"].get("ghl_sub_account_id")
+
     return resolved
 
 

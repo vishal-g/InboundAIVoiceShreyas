@@ -1,6 +1,10 @@
 # 🚀 Multi-Tenant Omnichannel AI Automation Platform — Architecture Strategy
 
-This document outlines the strategic roadmap to evolve the current standalone voice agent into a comprehensive, multi-tenant B2B **Omnichannel AI Platform**. This platform replaces n8n to act as the central "Agentic Brain" for both inbound/outbound Voice AND all text-based interactions (WhatsApp, SMS, LiveChat, Facebook, Instagram) managed through GoHighLevel (GHL).
+This document outlines the strategic roadmap to evolve the current standalone voice agent into a comprehensive, multi-tenant B2B **Omnichannel AI Platform**. 
+
+**Core Identity of the Platform**:
+1. **The Native Voice AI & Dashboard**: The platform will continue to feature the powerful, low-latency LiveKit Voice AI Reps and the modular Next.js dashboard as its flagship capabilities, now running in a fully multi-tenant manner (Supabase).
+2. **The Aggregated Text Engine**: The platform will absorb the current n8n workflows (WhatsApp, SMS, CRM syncing) directly into the Python backend via LangGraph and background tasks. This creates a single, native "Agentic Brain" for *all* interactions, voice and text.
 
 ---
 
@@ -29,10 +33,10 @@ LangGraph is built exactly for this. It models stateful, multi-actor application
 
 1. **State Persistence**: LangGraph natively saves "checkpoints" to a database (we can map this to Supabase). This means a workflow can sleep for 3 days (e.g., waiting for an appointment), wake up, and continue exactly where it left off.
 2. **Visual Debugging**: **LangGraph Studio** gives you a visual UI to see every step the workflow took, replay errors, and see what the LLM thought at any given node. It gives you the "n8n visual feel" but with pure Python code.
-3. **The Omnichannel Workflows**:
+3. **The Omnichannel Workflows (Migrated from n8n)**:
     * **Text Engine / 1:1 n8n Mapping**: A LangGraph graph that acts as a strict 1-to-1 drop-in replacement for the n8n `Text_Engine.json`. It receives the exact same webhooks from GHL (WhatsApp, SMS, LiveChat, FB, Insta), drafts a context-aware reply using the Knowledgebase, and pushes it back to the exact GHL custom fields (`message_1`, `agent_number`) to send to the user without breaking existing automations.
-    * **Agentic Lead Qualification & Retrieval**: Pure Python RAG and API integration replacing `Get_Lead_Details.json` to pull CRM context securely based on the tenant.
-    * **Campaign & Outbound Automation**: Python background tasks replacing `Launch_Campaign.json` and `Make_Outbound_Call.json` to automatically dispatch calls or sequences via LiveKit and GHL.
+    * **Lead CRM Integration (`Get_Lead_Details.json`)**: Code-native integration with the GHL CRM to dynamically fetch client/lead context for use by both the text engine and the active voice reps.
+    * **Outbound Dispatch Engine (`Make_Outbound_Call.json`)**: A background service that receives GHL webhook triggers and automatically spins up a native LiveKit outbound dispatch routine, pitching leads intelligently.
     * **Note on Knowledgebase**: The `Update_Knowledgebase.json` workflow will *not* be migrated 1:1. Instead, it will be replaced by a native SaaS feature where clients upload PDFs in the dashboard, and the platform chunks/embeds them directly into a Supabase vector database.
 
 ---

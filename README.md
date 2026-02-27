@@ -1,135 +1,82 @@
-# LiveKit Outbound Calling Agent
+# 🎙️ RapidX AI Voice Agent
 
-This project provides a production-ready solution for making outbound AI phone calls using LiveKit and Vobiz SIP trunks. The AI agent can place calls, wait for an answer, and hold a natural conversation with the recipient.
+A complete, production-ready AI voice agent solution supporting both **inbound** and **outbound** telephony via LiveKit SIP trunks, complete with a web dashboard for configuration and analytics.
+
+The system uses:
+- **LiveKit** for WebRTC/SIP transport and agent hosting
+- **FastAPI / Jinja2** for the web dashboard and API
+- **Supabase** for call logs, CRM, and recording storage
+- **Sarvam AI / Deepgram** for Speech-to-Text (STT) and Text-to-Speech (TTS)
+- **OpenAI / Groq / Anthropic** for the conversational LLM brain
 
 ## 📂 Project Structure
 
-| File | Description |
-|------|-------------|
-| `agent.py` | The main AI worker. It runs in the background, waits for dispatch jobs, and places outbound calls. |
-| `make_call.py` | A utility script to trigger calls. It dispatches the agent to a unique room with the target phone number. |
-| `setup_trunk.py` | Script to configure the LiveKit SIP Trunk with Vobiz credentials. |
-| `transfer_call.md` | Guide for configuring and using SIP transfers. |
-| `.env.example` | Template for environment variables and secrets. |
-| `requirements.txt` | List of Python dependencies. |
+- `agent.py` — The unified LiveKit worker entrypoint (routes calls to inbound or outbound).
+- `agents/` — Core agent logic (`inbound.py`, `outbound.py`, `base.py`).
+- `ui_server.py` — The FastAPI web dashboard and API backend.
+- `config.py` — Centralized Pydantic configuration (`.env` + `config.json`).
+- `tools.py` — Agent tools (booking, checking availability, etc.).
+- `db_scripts/` — SQL schemas for Supabase.
+- `scripts/` — Utility scripts (`make_call.py`, `setup_trunk.py`).
+- `docs/` — Detailed guides (deployment, architecture, integrations).
+
+For a detailed view of the system architecture and call flows, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ---
 
-## 🚀 Installation & Setup
+## 🚀 Quickstart
 
-### 1. Prerequisites
+### 1. Requirements
+- Python 3.9+
+- `uv` (recommended) or `pip`
 
-Ensure you have the following installed:
-- **Python 3.9+**
-- **uv** (recommended for fast package management) - [Install uv](https://github.com/astral-sh/uv)
-
-### 2. LiveKit & Vobiz Credentials
-
-You will need the following accounts:
-
-1.  **LiveKit Cloud Account**: Get your Project URL, API Key, and Secret from [cloud.livekit.io](https://cloud.livekit.io).
-2.  **Vobiz Account**:
-    *   Log in to the **Vobiz Console Platform**.
-    *   Navigate to your SIP Trunk settings to find:
-        *   SIP Domain (e.g., `xxx.sip.vobiz.ai`)
-        *   Username & Password
-    *   Get your DID Number (e.g., `+91...`).
-3.  **OpenAI / Deepgram Keys**:
-    *   OpenAI API Key (for LLM and optional TTS)
-    *   Deepgram API Key (for STT)
-
-### 3. Installation Steps
-
-1.  **Clone/Copy the project** to your local machine.
-2.  **Open a terminal** in the project folder (`livekit-outbound-calls`).
-3.  **Install dependencies** using `uv`:
-
-    ```powershell
-    # Create virtual environment
-    uv venv
-
-    # Install required packages
-    uv pip install -r requirements.txt
-    ```
-
-### 4. Configuration
-
-1.  **Create your env file**:
-    ```powershell
-    cp .env.example .env.local
-    ```
-2.  **Edit `.env.local`** and fill in your keys:
-    ```env
-    LIVEKIT_URL=wss://...
-    LIVEKIT_API_KEY=...
-    LIVEKIT_API_SECRET=...
-    OPENAI_API_KEY=...
-    DEEPGRAM_API_KEY=...
-    
-    # SIP Config
-    VOBIZ_SIP_DOMAIN=...
-    VOBIZ_USERNAME=...
-    VOBIZ_PASSWORD=...
-    VOBIZ_OUTBOUND_NUMBER=+91...
-    ```
-3.  **Set Trunk ID in `agent.py`**:
-    *   If you haven't created a trunk yet, you'll need to create one using the LiveKit CLI or setup script.
-    *   Once created, get the `TRUNK_ID` (starts with `ST_...`).
-    *   Open `agent.py` and update line 25:
-        ```python
-        OUTBOUND_TRUNK_ID = "ST_xxxxxxxxx"
-        ```
-
----
-
-## 📞 How to Use
-
-### Step 1: Start the Background Agent
-
-Open a PowerShell terminal and run:
-
-```powershell
-uv run python agent.py start
+### 2. Install Dependencies
+```bash
+uv venv
+source .venv/bin/activate
+uv pip install -r requirements.txt
 ```
 
-*   **Wait** until you see the message: `INFO:livekit.agents:registered worker ...`
-*   **Keep this terminal open.** This agent will listen for call requests.
+### 3. Configuration
+Copy the example environment file and fill in your API keys (LiveKit, OpenAI, Sarvam, Supabase, etc.):
+```bash
+cp .env.example .env
+```
+*(You can also configure many of the dynamic settings like AI personality, opening lines, and voices directly from the web dashboard later).*
 
-### Step 2: Make a Call
+### 4. Running the System
 
-Open a **separate** terminal window (keep the first one running) and run:
+You need to run two processes simultaneously:
 
-```powershell
-uv run python make_call.py --to +919988776655 (your number)
+**Terminal 1: Start the Web Dashboard**
+```bash
+# Starts the UI server on http://localhost:8000
+python ui_server.py
 ```
 
-*(Replace `+919988776655` with the actual number you want to call)*
-
-### What Happens Next?
-
-1.  `make_call.py` sends a "dispatch" request to LiveKit.
-2.  LiveKit assigns the job to your running `agent.py`.
-3.  The agent joins a secure room (e.g., `call-9148...`).
-4.  The agent dials the phone number via the Vobiz SIP trunk.
-5.  **When the user answers**, the agent will start listening and speaking.
-6.  **Call Transfer**: You can ask the agent to transfer you.
-    *   *Default*: "Transfer me." -> Transfers to the configured default number.
-    *   *Custom*: "Transfer me to +1..." -> Transfers to the specific number.
-    *   For detailed setup and troubleshooting, see [transfer_call.md](transfer_call.md).
+**Terminal 2: Start the AI Agent Worker**
+```bash
+# Starts the LiveKit worker that powers the voice AI
+python agent.py dev
+```
 
 ---
 
-## 🛠️ Troubleshooting
+## 📞 Using the Agent
 
-- **Agent not starting?**
-    - Check `.env.local` is correct.
-    - Ensure dependencies are installed (`uv pip install ...`).
+### Web Dashboard
+Oepn `http://localhost:8000` in your browser. From here you can:
+- View **Call Logs** and **CRM Contacts**
+- See real-time **Metrics** (total calls, booking rates, average duration)
+- Change the **Agent Settings** (system prompt, opening greeting)
+- Switch **Models & Voices** (toggle between OpenAI/Groq or change TTS language presets)
 
-- **Call not connecting?**
-    - Check `OUTBOUND_TRUNK_ID` in `agent.py`.
-    - Verify your Vobiz SIP credentials and balance.
-    - Ensure the phone number includes the country code (e.g., `+91`).
+### Browser Demo
+You can test the agent directly in your browser without calling a phone number! 
+Go to the **Demo Link** tab in the dashboard and generate a web session link.
 
-- **No audio?**
-    - Check OpenAI/Deepgram API keys.
-    - Check the agent logs for errors.
+### Outbound Calling
+Go to the **Outbound Calls** tab in the dashboard to dispatch the agent to call any phone number instantly.
+
+### Inbound Calling (SIP)
+To receive calls from a real phone number, you need to configure a SIP Trunk (e.g., using Vobiz) in your LiveKit Cloud project and route it to the agent. See the docs in the `docs/` folder for detailed SIP setup instructions.

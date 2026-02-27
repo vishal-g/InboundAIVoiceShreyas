@@ -110,6 +110,31 @@ def get_settings() -> AppSettings:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# config.json helpers (legacy dashboard compatibility)
+# ══════════════════════════════════════════════════════════════════════════════
+
+_CONFIG_JSON = Path(__file__).resolve().parent.parent / "config.json"
+
+
+def read_config_json() -> dict[str, Any]:
+    """Read config.json, returning an empty dict on any failure."""
+    try:
+        return json.loads(_CONFIG_JSON.read_text())
+    except Exception:
+        return {}
+
+
+def write_config_json(data: dict[str, Any]) -> None:
+    """Merge *data* into config.json and write back."""
+    current = read_config_json()
+    current.update(data)
+    try:
+        _CONFIG_JSON.write_text(json.dumps(current, indent=4))
+    except Exception as e:
+        logger.error(f"Failed to write config.json: {e}")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # Live config (used by agent at call time)
 # ══════════════════════════════════════════════════════════════════════════════
 

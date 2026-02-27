@@ -61,7 +61,7 @@ async def ghl_launch_campaign(request: Request, background_tasks: BackgroundTask
 
 
 @hook_router.post("/ghl/lead-details")
-async def ghl_lead_details(request: Request, sub_account_id: str = None):
+async def ghl_lead_details(request: Request, background_tasks: BackgroundTasks, sub_account_id: str = None):
     """
     Replaces n8n Get_Lead_Details.json
     """

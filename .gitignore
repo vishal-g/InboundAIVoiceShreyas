@@ -16,3 +16,6 @@ __pycache__/
 # Logs and configs
 *.log
 configs/
+
+# Sensitive n8n workflows
+references/n8n-workflows/*.json

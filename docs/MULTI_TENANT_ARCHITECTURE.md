@@ -30,7 +30,7 @@ LangGraph is built exactly for this. It models stateful, multi-actor application
 1. **State Persistence**: LangGraph natively saves "checkpoints" to a database (we can map this to Supabase). This means a workflow can sleep for 3 days (e.g., waiting for an appointment), wake up, and continue exactly where it left off.
 2. **Visual Debugging**: **LangGraph Studio** gives you a visual UI to see every step the workflow took, replay errors, and see what the LLM thought at any given node. It gives you the "n8n visual feel" but with pure Python code.
 3. **The Omnichannel Workflows**:
-    * **Text Engine / Query Addressing (All Channels)**: A LangGraph graph that receives webhooks from GHL whenever an interaction occurs (WhatsApp, SMS, LiveChat, FB, Insta). It routes the message to a RAG node (Knowledgebase), drafts a context-aware reply, and pushes it back to GHL to send to the user.
+    * **Text Engine / 1:1 n8n Mapping**: A LangGraph graph that acts as a strict 1-to-1 drop-in replacement for the n8n `Text_Engine.json`. It receives the exact same webhooks from GHL (WhatsApp, SMS, LiveChat, FB, Insta), drafts a context-aware reply using the Knowledgebase, and pushes it back to the exact GHL custom fields (`message_1`, `agent_number`) to send to the user without breaking existing automations.
     * **Agentic Lead Qualification**: A graph that evaluates a lead's intent based on their text or voice conversation history, and when qualified, pushes a "State Change" via API back into GHL to move them to the next pipeline stage.
     * **Voice-Triggered Automations**: When the Voice Agent hangs up (or calls a specific function tool mid-call), it triggers a background LangGraph job: analyze transcript, summarize, push notes to GHL Contact, and trigger subsequent text workflows (like `if booking_intent == true -> send WhatsApp confirmation via GHL`).
 
@@ -88,7 +88,8 @@ Don't build this all at once. Here is the safest integration path:
 
 ### Phase 2: LangGraph Core Migration (2-3 Weeks)
 * Install LangGraph.
-* Recreate the `Text_Engine.json` (SMS replying using Knowledgebase) and `Make_Outbound_Call.json` logic in Python.
+* Recreate the `Text_Engine.json` as a strict 1-to-1 Python drop-in replacement (maintaining all GHL payload constraints).
+* Build a FastAPI webhook proxy to intercept GHL calls and trigger the LangGraph nodes.
 * Tie the workflows to the multi-tenant Database (so they react per client).
 
 ### Phase 3: Long-Running Automations (2 Weeks)

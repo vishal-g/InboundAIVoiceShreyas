@@ -1,30 +1,19 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
+    Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
+    Card, CardContent, CardDescription, CardHeader, CardTitle,
 } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { AgencyActions, CreateAgencyButton } from './agency-client'
 
 export default async function AgenciesPage() {
     const supabase = await createClient()
 
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
 
-    // Verify Admin Role
     const { data: roleData } = await supabase
         .from('user_roles')
         .select('role')
@@ -32,54 +21,60 @@ export default async function AgenciesPage() {
         .single()
 
     if (roleData?.role !== 'platform_admin') {
-        redirect('/dashboard') // Or show standard unauthorized page
+        redirect('/dashboard')
     }
 
-    // Fetch all agencies
-    const { data: agencies, error } = await supabase.from('agencies').select('*').order('name')
+    const { data: agencies } = await supabase
+        .from('agencies')
+        .select('*, sub_accounts(count)')
+        .order('name')
 
     return (
         <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
             <Card>
-                <CardHeader className="px-7">
-                    <CardTitle>Agencies</CardTitle>
-                    <CardDescription>
-                        Manage the white-label agencies operating on your platform.
-                    </CardDescription>
+                <CardHeader className="px-7 flex flex-row items-center justify-between">
+                    <div>
+                        <CardTitle>Agencies</CardTitle>
+                        <CardDescription>
+                            Manage the white-label agencies operating on your platform.
+                        </CardDescription>
+                    </div>
+                    <CreateAgencyButton />
                 </CardHeader>
                 <CardContent>
                     <Table>
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Agency Name</TableHead>
-                                <TableHead className="hidden sm:table-cell">ID</TableHead>
+                                <TableHead className="hidden sm:table-cell">Sub-Accounts</TableHead>
                                 <TableHead className="hidden md:table-cell">Status</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {agencies?.map((agency) => (
-                                <TableRow key={agency.id} className="bg-accent/50">
+                            {agencies?.map((agency: any) => (
+                                <TableRow key={agency.id}>
                                     <TableCell>
                                         <div className="font-medium">{agency.name}</div>
+                                        <div className="text-xs text-muted-foreground font-mono">{agency.id.slice(0, 8)}…</div>
                                     </TableCell>
-                                    <TableCell className="hidden sm:table-cell text-xs font-mono text-muted-foreground">
-                                        {agency.id}
+                                    <TableCell className="hidden sm:table-cell">
+                                        {agency.sub_accounts?.[0]?.count ?? 0}
                                     </TableCell>
                                     <TableCell className="hidden md:table-cell">
-                                        <Badge className="text-xs" variant="secondary">
-                                            Active
+                                        <Badge variant={agency.is_active ? 'default' : 'secondary'}>
+                                            {agency.is_active ? 'Active' : 'Inactive'}
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="text-right">
-                                        <span className="text-sm cursor-pointer underline hover:text-primary">Edit</span>
+                                        <AgencyActions agencyId={agency.id} agencyName={agency.name} />
                                     </TableCell>
                                 </TableRow>
                             ))}
                             {(!agencies || agencies.length === 0) && (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="text-center py-4">
-                                        No agencies found.
+                                    <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                                        No agencies yet. Click &quot;Add Agency&quot; to create one.
                                     </TableCell>
                                 </TableRow>
                             )}

@@ -361,19 +361,23 @@ async def get_demo_page():
 
 # ── Prometheus Metrics (#40) ──────────────────────────────────────────────────
 try:
-    from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
+    from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST, CollectorRegistry
     from fastapi.responses import Response as _Resp
 
-    _voice_calls_total   = Counter("voice_calls_total",   "Total calls handled by the agent")
-    _voice_calls_booked  = Counter("voice_calls_booked_total", "Calls that resulted in a booking")
+    # Use a dedicated registry to avoid conflicts with the default global registry
+    # when uvicorn's SpawnProcess reloader re-imports the module.
+    _METRICS_REGISTRY = CollectorRegistry()
+
+    _voice_calls_total   = Counter("voice_calls_total",   "Total calls handled by the agent", registry=_METRICS_REGISTRY)
+    _voice_calls_booked  = Counter("voice_calls_booked_total", "Calls that resulted in a booking", registry=_METRICS_REGISTRY)
     _voice_call_duration = Histogram("voice_call_duration_seconds", "Call duration in seconds",
-                                      buckets=[10, 30, 60, 120, 300, 600, 1200])
-    _voice_calls_active  = Gauge("voice_calls_active", "Currently active calls")
+                                      buckets=[10, 30, 60, 120, 300, 600, 1200], registry=_METRICS_REGISTRY)
+    _voice_calls_active  = Gauge("voice_calls_active", "Currently active calls", registry=_METRICS_REGISTRY)
 
     @app.get("/metrics", include_in_schema=False)
     def metrics():
         """Prometheus metrics scrape endpoint."""
-        return _Resp(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+        return _Resp(generate_latest(_METRICS_REGISTRY), media_type=CONTENT_TYPE_LATEST)
 
     @app.post("/internal/record-call", include_in_schema=False)
     async def record_call_metric(request: Request):
@@ -1247,7 +1251,7 @@ function renderLangGrid() {{
       border:2px solid ${{id===currentLangPreset ? p.color : 'var(--border)'}};
       border-radius:12px;padding:18px;cursor:pointer;transition:all 0.15s;
       ${{id===currentLangPreset ? 'box-shadow:0 0 16px rgba(108,99,255,0.2)' : ''}}
-    " onmouseover="this.style.borderColor='${{p.color}}'" onmouseout="this.style.borderColor='${{id===currentLangPreset?p.color:'var(--border)}}'">
+    " onmouseover="this.style.borderColor='${{p.color}}'" onmouseout="this.style.borderColor=${{id===currentLangPreset?p.color:`var(--border)`}}">
       <div style="font-size:28px;margin-bottom:8px;">${{p.flag}}</div>
       <div style="font-weight:700;font-size:14px;color:${{id===currentLangPreset?p.color:'var(--text)'}}">${{p.label}}</div>
       <div style="font-size:11px;color:var(--muted);margin-top:3px;">${{p.sub}}</div>

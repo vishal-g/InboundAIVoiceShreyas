@@ -23,7 +23,7 @@ def read_config():
     def get_val(key, env_key, default=""):
         return config.get(key) if config.get(key) else os.getenv(env_key, default)
 
-    return {
+    resolved = {
         "first_line": get_val("first_line", "FIRST_LINE", "Namaste! This is Aryan from RapidX AI — we help businesses automate with AI. Hmm, may I ask what kind of business you run?"),
         "agent_instructions": get_val("agent_instructions", "AGENT_INSTRUCTIONS", ""),
         "stt_min_endpointing_delay": float(get_val("stt_min_endpointing_delay", "STT_MIN_ENDPOINTING_DELAY", 0.6)),
@@ -42,8 +42,12 @@ def read_config():
         "telegram_chat_id": get_val("telegram_chat_id", "TELEGRAM_CHAT_ID", ""),
         "supabase_url": get_val("supabase_url", "SUPABASE_URL", ""),
         "supabase_key": get_val("supabase_key", "SUPABASE_KEY", ""),
-        **config
     }
+    # Merge extra config.json keys (e.g. lang_preset) without overwriting resolved values
+    for k, v in config.items():
+        if k not in resolved:
+            resolved[k] = v
+    return resolved
 
 def write_config(data):
     config = read_config()

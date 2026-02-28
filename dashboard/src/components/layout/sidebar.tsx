@@ -70,11 +70,12 @@ export default function Sidebar({
     // Build nav links
     const activeSubId = selectedSubAccountId || filteredSubAccounts[0]?.id || 'demo'
 
-    // Context-aware nav: show admin links when in admin/agency view,
-    // show sub-account links when a sub-account is selected
+    // View mode flags
     const isSubAccountView = !!selectedSubAccountId
+    const isAgencyView = !!selectedAgencyId && !isSubAccountView
+    const isSuperAdminView = !selectedAgencyId && !isSubAccountView
 
-    // Agency context param for admin pages
+    // URL params for navigation
     const contextParam = isSubAccountView
         ? `?sub_account_id=${selectedSubAccountId}`
         : selectedAgencyId ? `?agency_id=${selectedAgencyId}` : ''
@@ -82,14 +83,20 @@ export default function Sidebar({
 
     const navLinks = [
         { href: `/dashboard${contextParam}`, icon: Home, label: 'Overview' },
-        // Admin-level links — only when NOT viewing a specific sub-account
-        ...(!isSubAccountView && (isPlatformAdmin || isAgencyAdmin)
+        // Super Admin: show Agencies + Sub-Accounts
+        ...(isSuperAdminView && isPlatformAdmin
             ? [
-                { href: `/dashboard/agencies${agencyParam}`, icon: Building2, label: 'Agencies' },
+                { href: '/dashboard/agencies', icon: Building2, label: 'Agencies' },
+                { href: '/dashboard/sub-accounts', icon: Users2, label: 'Sub-Accounts' },
+            ]
+            : []),
+        // Agency View: show Sub-Accounts for this agency
+        ...(isAgencyView && (isPlatformAdmin || isAgencyAdmin)
+            ? [
                 { href: `/dashboard/sub-accounts${agencyParam}`, icon: Users2, label: 'Sub-Accounts' },
             ]
             : []),
-        // Sub-account links — only when a sub-account IS selected
+        // Sub-Account View: show AI Settings + Call Logs
         ...(isSubAccountView
             ? [
                 { href: `/dashboard/${activeSubId}/settings`, icon: Settings, label: 'AI Settings' },
@@ -170,6 +177,7 @@ export default function Sidebar({
                                                         setSelectedAgencyId(a.id)
                                                         setSelectedSubAccountId('')
                                                         setAgencyOpen(false)
+                                                        router.push(`/dashboard?agency_id=${a.id}`)
                                                     }}
                                                 >
                                                     <Building className={cn("mr-2 h-3 w-3 text-muted-foreground")} />

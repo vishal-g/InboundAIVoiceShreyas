@@ -38,9 +38,8 @@ export default function LoginPage() {
             return
         }
 
-        // Login succeeded — cookies are set by the browser client automatically
-        router.push('/dashboard')
-        router.refresh()
+        // Login succeeded — use full page navigation so cookies are sent with request
+        window.location.href = '/dashboard'
     }
 
     return (

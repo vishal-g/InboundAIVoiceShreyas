@@ -19,12 +19,27 @@ export type ChecklistSection = {
     updated_at: string
 }
 
+// Types for the dynamic JSON form builder
+export type WidgetField = {
+    key: string
+    label: string
+    type: 'text' | 'password' | 'url' | 'number'
+    required?: boolean
+    placeholder?: string
+}
+
+export type WidgetConfig = {
+    title: string
+    fields: WidgetField[]
+}
+
 export type ChecklistStep = {
     id: string
     section_id: string
     title: string
     description: string | null
     sort_order: number
+    widget_config: WidgetConfig | null
     created_at: string
     updated_at: string
 }
@@ -54,4 +69,5 @@ export type ChecklistData = {
     totalSteps: number
     completedSteps: number
     percentage: number
+    credentials: Record<string, string>
 }

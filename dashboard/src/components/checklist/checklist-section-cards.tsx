@@ -99,6 +99,7 @@ export default function ChecklistSectionCards({ data, subAccountId, basePath }: 
                     initialSectionId={selectedSection.id}
                     subAccountId={subAccountId}
                     basePath={basePath}
+                    credentials={data.credentials}
                 />
             )}
         </>

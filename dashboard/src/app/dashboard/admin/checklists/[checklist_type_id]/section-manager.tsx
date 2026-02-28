@@ -29,6 +29,7 @@ type Step = {
     title: string
     description: string | null
     sort_order: number
+    widget_config?: any
 }
 
 type Section = {
@@ -68,6 +69,7 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
     const [editingStep, setEditingStep] = useState<Step | null>(null)
     const [stepSectionId, setStepSectionId] = useState<string>('')
     const [stepDescription, setStepDescription] = useState('')
+    const [stepWidgetConfig, setStepWidgetConfig] = useState('')
 
     // Delete confirmation
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -188,17 +190,28 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
         const fd = new FormData(e.currentTarget)
         const title = fd.get('title') as string
 
+        let parsedWidgetConfig = null
+        if (stepWidgetConfig.trim()) {
+            try {
+                parsedWidgetConfig = JSON.parse(stepWidgetConfig)
+            } catch (err) {
+                toast.error('Invalid JSON in Widget Config')
+                return
+            }
+        }
+
         startTransition(async () => {
             if (editingStep) {
-                const res = await updateStep(editingStep.id, { title, description: stepDescription })
+                const res = await updateStep(editingStep.id, { title, description: stepDescription, widget_config: parsedWidgetConfig })
                 res.success ? toast.success('Step updated') : toast.error(res.error || 'Failed')
             } else {
-                const res = await createStep(stepSectionId, title, stepDescription)
+                const res = await createStep(stepSectionId, title, stepDescription, parsedWidgetConfig)
                 res.success ? toast.success('Step created') : toast.error(res.error || 'Failed')
             }
             setStepDialogOpen(false)
             setEditingStep(null)
             setStepDescription('')
+            setStepWidgetConfig('')
             router.refresh()
         })
     }
@@ -207,6 +220,7 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
         setEditingStep(null)
         setStepSectionId(sectionId)
         setStepDescription('')
+        setStepWidgetConfig('')
         setStepDialogOpen(true)
     }
 
@@ -214,6 +228,7 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
         setEditingStep(step)
         setStepSectionId(sectionId)
         setStepDescription(step.description || '')
+        setStepWidgetConfig(step.widget_config ? JSON.stringify(step.widget_config, null, 2) : '')
         setStepDialogOpen(true)
     }
 
@@ -456,6 +471,19 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
                                 <RichTextEditor
                                     value={stepDescription}
                                     onChange={setStepDescription}
+                                />
+                            </div>
+                            <div className="space-y-2 pt-2">
+                                <Label>Widget Configuration (JSON)</Label>
+                                <p className="text-[11px] text-muted-foreground leading-tight mb-1">
+                                    Optionally attach an interactive credential form. Must be valid JSON like: <br />
+                                    <code>{`{"title": "API Keys", "fields": [{"key": "openai_key", "label": "OpenAI Key", "type": "password"}]}`}</code>
+                                </p>
+                                <Textarea
+                                    value={stepWidgetConfig}
+                                    onChange={(e) => setStepWidgetConfig(e.target.value)}
+                                    className="font-mono text-xs min-h-[120px]"
+                                    placeholder='{&#10;  "title": "LLM Credentials",&#10;  "fields": [&#10;    { "key": "openai_api_key", "label": "OpenAI API Key", "type": "password", "required": true }&#10;  ]&#10;}'
                                 />
                             </div>
                         </div>

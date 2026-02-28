@@ -198,3 +198,9 @@ INSERT INTO checklist_steps (section_id, title, description, sort_order) VALUES
 -- ══════════════════════════════════════════════════════════════════════════════
 -- DONE. All tables, indexes, RLS policies, and seed data are idempotent.
 -- ══════════════════════════════════════════════════════════════════════════════
+
+-- Add widget configuration to checklist steps
+ALTER TABLE public.checklist_steps 
+  ADD COLUMN IF NOT EXISTS widget_type text,
+  ADD COLUMN IF NOT EXISTS widget_title text,
+  ADD COLUMN IF NOT EXISTS widget_placeholder text;

@@ -75,12 +75,23 @@ export async function getChecklistData(
     const totalSteps = enrichedSections.reduce((sum, s) => sum + s.totalSteps, 0)
     const completedSteps = enrichedSections.reduce((sum, s) => sum + s.completedSteps, 0)
 
+
+    // 6. Fetch existing dynamic credentials
+    const { data: settingsData } = await admin
+        .from('sub_account_settings')
+        .select('credentials')
+        .eq('sub_account_id', subAccountId)
+        .single()
+
+    const credentials = settingsData?.credentials || {}
+
     return {
         checklistType: checklistType as ChecklistType,
         sections: enrichedSections,
         totalSteps,
         completedSteps,
         percentage: totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0,
+        credentials
     }
 }
 
@@ -207,7 +218,7 @@ export async function deleteSection(sectionId: string) {
 }
 
 // Steps CRUD
-export async function createStep(sectionId: string, title: string, description: string) {
+export async function createStep(sectionId: string, title: string, description: string, widgetConfig: any = null) {
     const admin = await requirePlatformAdmin()
 
     const { data: existing } = await admin
@@ -221,7 +232,7 @@ export async function createStep(sectionId: string, title: string, description: 
 
     const { data, error } = await admin
         .from('checklist_steps')
-        .insert({ section_id: sectionId, title, description, sort_order: nextOrder })
+        .insert({ section_id: sectionId, title, description, widget_config: widgetConfig, sort_order: nextOrder })
         .select()
         .single()
 

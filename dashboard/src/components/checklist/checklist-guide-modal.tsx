@@ -5,7 +5,8 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { CheckCircle2, Circle, ChevronDown, ChevronRight, ArrowLeft } from 'lucide-react'
 import { toggleStepCompletion } from './actions'
-import type { SectionWithProgress, StepWithProgress } from './types'
+import type { SectionWithProgress } from './types'
+import { DynamicStepsWidget } from './widgets/dynamic-steps-widget'
 
 type Props = {
     open: boolean
@@ -14,6 +15,7 @@ type Props = {
     initialSectionId: string
     subAccountId: string
     basePath: string
+    credentials: Record<string, string>
 }
 
 export default function ChecklistGuideModal({
@@ -23,6 +25,7 @@ export default function ChecklistGuideModal({
     initialSectionId,
     subAccountId,
     basePath,
+    credentials,
 }: Props) {
     const [activeSectionId, setActiveSectionId] = useState(initialSectionId)
     const [activeStepId, setActiveStepId] = useState<string | null>(() => {
@@ -204,6 +207,16 @@ export default function ChecklistGuideModal({
                                             </p>
                                         )}
                                     </div>
+
+                                    {activeStep.widget_config && (
+                                        <div className="mt-8 border-t pt-2">
+                                            <DynamicStepsWidget
+                                                subAccountId={subAccountId}
+                                                config={activeStep.widget_config}
+                                                existingCredentials={credentials}
+                                            />
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="flex items-center justify-center h-full text-muted-foreground">

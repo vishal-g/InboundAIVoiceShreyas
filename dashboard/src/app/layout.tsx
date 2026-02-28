@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "RapidX AI — Admin Dashboard",
+  title: "Spinning Top AI — Admin Dashboard",
   description: "Multi-Tenant AI Voice Agent Administration",
 };
 

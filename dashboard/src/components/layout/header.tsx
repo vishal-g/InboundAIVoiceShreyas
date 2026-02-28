@@ -35,7 +35,7 @@ export default function Header({ userEmail }: { userEmail?: string }) {
                             href="/dashboard"
                             className="flex items-center gap-4 px-2.5 text-foreground"
                         >
-                            RapidX AI
+                            Spinning Top AI
                         </Link>
                         <Link
                             href="/dashboard"

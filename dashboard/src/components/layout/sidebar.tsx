@@ -121,9 +121,9 @@ export default function Sidebar({
             <div className="flex h-14 items-center border-b px-4">
                 <Link href="/dashboard" className="flex items-center gap-2">
                     <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">
-                        RX
+                        ST
                     </span>
-                    <span className="font-semibold text-sm">RapidX AI</span>
+                    <span className="font-semibold text-sm">Spinning Top AI</span>
                 </Link>
             </div>
 

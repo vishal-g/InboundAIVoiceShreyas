@@ -9,9 +9,18 @@ import {
     Settings,
     Users2,
     PhoneCall,
-    ChevronDown,
     LogOut,
+    Zap,
+    Building,
 } from 'lucide-react'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectSeparator,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select'
 
 type Agency = { id: string; name: string }
 type SubAccount = { id: string; name: string; agency_id: string }
@@ -61,16 +70,24 @@ export default function Sidebar({
         { href: `/dashboard/${activeSubId}/logs`, icon: PhoneCall, label: 'Call Logs' },
     ]
 
-    function handleAgencyChange(e: React.ChangeEvent<HTMLSelectElement>) {
-        setSelectedAgencyId(e.target.value)
-        setSelectedSubAccountId('')
+    function handleAgencyChange(value: string) {
+        if (value === '__super_admin__') {
+            setSelectedAgencyId('')
+            setSelectedSubAccountId('')
+            router.push('/dashboard')
+        } else {
+            setSelectedAgencyId(value)
+            setSelectedSubAccountId('')
+        }
     }
 
-    function handleSubAccountChange(e: React.ChangeEvent<HTMLSelectElement>) {
-        setSelectedSubAccountId(e.target.value)
-        // Navigate to the selected sub-account's settings
-        if (e.target.value) {
-            router.push(`/dashboard/${e.target.value}/settings`)
+    function handleSubAccountChange(value: string) {
+        if (value === '__agency_view__') {
+            setSelectedSubAccountId('')
+            router.push('/dashboard')
+        } else {
+            setSelectedSubAccountId(value)
+            router.push(`/dashboard/${value}/settings`)
         }
     }
 
@@ -94,37 +111,67 @@ export default function Sidebar({
             </div>
 
             {/* Context Switchers */}
-            <div className="border-b px-3 py-3 space-y-2">
+            <div className="border-b px-3 py-3 space-y-3">
                 {/* Agency Dropdown — visible to platform_admin */}
                 {isPlatformAdmin && agencies.length > 0 && (
-                    <div>
+                    <div className="space-y-1">
                         <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Agency</label>
-                        <select
-                            value={selectedAgencyId}
-                            onChange={handleAgencyChange}
-                            className="mt-0.5 w-full rounded-md border bg-background px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
-                        >
-                            {agencies.map((a) => (
-                                <option key={a.id} value={a.id}>{a.name}</option>
-                            ))}
-                        </select>
+                        <Select value={selectedAgencyId || '__super_admin__'} onValueChange={handleAgencyChange}>
+                            <SelectTrigger size="sm" className="w-full text-xs">
+                                <SelectValue placeholder="Select agency…" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="__super_admin__">
+                                    <span className="flex items-center gap-1.5">
+                                        <Zap className="h-3 w-3 text-amber-500" />
+                                        Super Admin View
+                                    </span>
+                                </SelectItem>
+                                <SelectSeparator />
+                                {agencies.map((a) => (
+                                    <SelectItem key={a.id} value={a.id}>
+                                        <span className="flex items-center gap-1.5">
+                                            <Building className="h-3 w-3 text-muted-foreground" />
+                                            {a.name}
+                                        </span>
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                 )}
 
                 {/* Sub-Account Dropdown — visible to platform_admin and agency_admin */}
                 {(isPlatformAdmin || isAgencyAdmin) && (
-                    <div>
+                    <div className="space-y-1">
                         <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Sub-Account</label>
-                        <select
-                            value={selectedSubAccountId}
-                            onChange={handleSubAccountChange}
-                            className="mt-0.5 w-full rounded-md border bg-background px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
-                        >
-                            <option value="">Select…</option>
-                            {filteredSubAccounts.map((sa) => (
-                                <option key={sa.id} value={sa.id}>{sa.name}</option>
-                            ))}
-                        </select>
+                        <Select value={selectedSubAccountId || '__agency_view__'} onValueChange={handleSubAccountChange}>
+                            <SelectTrigger size="sm" className="w-full text-xs">
+                                <SelectValue placeholder="Select sub-account…" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="__agency_view__">
+                                    <span className="flex items-center gap-1.5">
+                                        <Building2 className="h-3 w-3 text-blue-500" />
+                                        Agency View
+                                    </span>
+                                </SelectItem>
+                                <SelectSeparator />
+                                {filteredSubAccounts.map((sa) => (
+                                    <SelectItem key={sa.id} value={sa.id}>
+                                        <span className="flex items-center gap-1.5">
+                                            <Users2 className="h-3 w-3 text-muted-foreground" />
+                                            {sa.name}
+                                        </span>
+                                    </SelectItem>
+                                ))}
+                                {filteredSubAccounts.length === 0 && (
+                                    <div className="px-2 py-1.5 text-xs text-muted-foreground italic">
+                                        No sub-accounts for this agency
+                                    </div>
+                                )}
+                            </SelectContent>
+                        </Select>
                     </div>
                 )}
             </div>

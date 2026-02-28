@@ -3,8 +3,9 @@
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
-import { Bold, Italic, Strikethrough, List, ListOrdered, Link as LinkIcon } from 'lucide-react'
+import { Bold, Italic, Strikethrough, List, ListOrdered, Link as LinkIcon, Info, CheckCircle2, AlertTriangle } from 'lucide-react'
 import { Toggle } from '@/components/ui/toggle'
+import { Callout } from './extensions/callout'
 import { useEffect, useState } from 'react'
 
 interface RichTextEditorProps {
@@ -17,6 +18,7 @@ export function RichTextEditor({ value, onChange }: RichTextEditorProps) {
         immediatelyRender: false,
         extensions: [
             StarterKit,
+            Callout,
             Link.configure({
                 openOnClick: false,
                 HTMLAttributes: {
@@ -126,6 +128,36 @@ export function RichTextEditor({ value, onChange }: RichTextEditorProps) {
                     aria-label="Toggle link"
                 >
                     <LinkIcon className="h-4 w-4" />
+                </Toggle>
+
+                <div className="w-px h-4 bg-border mx-1" />
+
+                <Toggle
+                    size="sm"
+                    pressed={editor.isActive('callout', { type: 'info' })}
+                    onPressedChange={() => editor.commands.toggleCallout({ type: 'info' })}
+                    aria-label="Info Callout"
+                    className="data-[state=on]:bg-blue-100 data-[state=on]:text-blue-700"
+                >
+                    <Info className="h-4 w-4 text-blue-500" />
+                </Toggle>
+                <Toggle
+                    size="sm"
+                    pressed={editor.isActive('callout', { type: 'success' })}
+                    onPressedChange={() => editor.commands.toggleCallout({ type: 'success' })}
+                    aria-label="Success Callout"
+                    className="data-[state=on]:bg-emerald-100 data-[state=on]:text-emerald-700"
+                >
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                </Toggle>
+                <Toggle
+                    size="sm"
+                    pressed={editor.isActive('callout', { type: 'warning' })}
+                    onPressedChange={() => editor.commands.toggleCallout({ type: 'warning' })}
+                    aria-label="Warning Callout"
+                    className="data-[state=on]:bg-amber-100 data-[state=on]:text-amber-700"
+                >
+                    <AlertTriangle className="h-4 w-4 text-amber-500" />
                 </Toggle>
             </div>
 

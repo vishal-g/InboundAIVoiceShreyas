@@ -1,8 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { usePathname, useRouter, useParams, useSearchParams } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import {
     Home,
     Building2,
@@ -71,15 +71,40 @@ export default function Sidebar({
     userEmail,
     navItems,
 }: SidebarProps) {
+    const params = useParams()
+    const searchParams = useSearchParams()
     const pathname = usePathname()
     const router = useRouter()
     const isPlatformAdmin = userRole === 'platform_admin'
     const isAgencyAdmin = userRole === 'agency_admin'
 
-    const [selectedAgencyId, setSelectedAgencyId] = useState(agencyId || '')
-    const [selectedSubAccountId, setSelectedSubAccountId] = useState(subAccountId || '')
+    const urlSubAccountId = (params?.sub_account_id as string) || searchParams.get('sub_account_id') || ''
+    const urlAgencyId = (params?.agency_id as string) || searchParams.get('agency_id') || ''
+
+    const [selectedAgencyId, setSelectedAgencyId] = useState(urlAgencyId || agencyId || '')
+    const [selectedSubAccountId, setSelectedSubAccountId] = useState(urlSubAccountId || subAccountId || '')
     const [agencyOpen, setAgencyOpen] = useState(false)
     const [subAccountOpen, setSubAccountOpen] = useState(false)
+
+    // Sync state with URL changes
+    useEffect(() => {
+        if (urlSubAccountId && urlSubAccountId !== selectedSubAccountId) {
+            setSelectedSubAccountId(urlSubAccountId)
+        }
+        if (urlAgencyId && urlAgencyId !== selectedAgencyId) {
+            setSelectedAgencyId(urlAgencyId)
+        }
+    }, [urlSubAccountId, urlAgencyId])
+
+    // If sub-account is selected, ensure agency is also selected for Plat Admins
+    useEffect(() => {
+        if (isPlatformAdmin && selectedSubAccountId && !selectedAgencyId) {
+            const sa = subAccounts.find(s => s.id === selectedSubAccountId)
+            if (sa) {
+                setSelectedAgencyId(sa.agency_id)
+            }
+        }
+    }, [selectedSubAccountId, subAccounts, isPlatformAdmin])
 
     // Filter sub-accounts by selected agency
     const filteredSubAccounts = isPlatformAdmin

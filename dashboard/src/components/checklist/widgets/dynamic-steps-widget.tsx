@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useActionState, useEffect } from 'react'
-import { CheckCircle2, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,7 +24,7 @@ export function DynamicStepsWidget({ subAccountId, config, existingCredentials }
     }
 
     // Check if ALL required fields in this widget already have values saved
-    const allConfigured = config.fields.every(f => !!existingCredentials[f.key])
+    // const allConfigured = config.fields.every(f => !!existingCredentials[f.key])
 
     useEffect(() => {
         if (state.success) {
@@ -57,8 +57,8 @@ export function DynamicStepsWidget({ subAccountId, config, existingCredentials }
                             <div
                                 key={field.key}
                                 className={`rounded-xl border p-4 transition-all duration-200 ${isConfigured
-                                        ? 'border-green-500/30 bg-green-50/50 dark:bg-green-500/5'
-                                        : 'border-border bg-background'
+                                    ? 'border-green-500/30 bg-green-50/50 dark:bg-green-500/5'
+                                    : 'border-border bg-background'
                                     }`}
                             >
                                 <div className="mb-3 flex items-center justify-between">

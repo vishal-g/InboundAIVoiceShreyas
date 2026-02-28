@@ -3,7 +3,7 @@
 import React, { useState, useTransition, useEffect } from 'react'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { CheckCircle2, Circle, ChevronDown, ChevronRight, ArrowLeft } from 'lucide-react'
+import { CheckCircle2, ChevronDown, ChevronRight, ArrowLeft } from 'lucide-react'
 import { toggleStepCompletion } from './actions'
 import type { SectionWithProgress } from './types'
 import { DynamicStepsWidget } from './widgets/dynamic-steps-widget'
@@ -55,20 +55,24 @@ export default function ChecklistGuideModal({
     // Sync state only when modal goes from closed -> open
     useEffect(() => {
         if (open && !prevOpenRef.current) {
-            setActiveSectionId(initialSectionId)
-            const section = sections.find(s => s.id === initialSectionId)
-            const firstStep = section?.steps?.[0]?.id || null
-            setActiveStepId(firstStep)
-            setExpandedSections(new Set([initialSectionId]))
+            startTransition(() => {
+                setActiveSectionId(initialSectionId)
+                const section = sections.find(s => s.id === initialSectionId)
+                const firstStep = section?.steps?.[0]?.id || null
+                setActiveStepId(firstStep)
+                setExpandedSections(new Set([initialSectionId]))
+            })
         }
         prevOpenRef.current = open
     }, [open, initialSectionId, sections])
 
     // Reset sub-state when step changes
     useEffect(() => {
-        setCurrentSlideIndex(0)
-        setQuizPassed(false)
-        setShowQuiz(false)
+        startTransition(() => {
+            setCurrentSlideIndex(0)
+            setQuizPassed(false)
+            setShowQuiz(false)
+        })
     }, [activeStepId])
 
     const activeSection = sections.find(s => s.id === activeSectionId)

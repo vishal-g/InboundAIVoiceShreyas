@@ -9,7 +9,7 @@ import { Toggle } from '@/components/ui/toggle'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Callout } from './extensions/callout'
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState, useTransition } from 'react'
 
 interface RichTextEditorProps {
     value: string
@@ -51,8 +51,11 @@ export function RichTextEditor({ value, onChange }: RichTextEditorProps) {
     }, [editor, value])
 
     const [mounted, setMounted] = useState(false)
+    const [, startTransition] = useTransition()
     useEffect(() => {
-        setMounted(true)
+        startTransition(() => {
+            setMounted(true)
+        })
     }, [])
 
     if (!mounted) {

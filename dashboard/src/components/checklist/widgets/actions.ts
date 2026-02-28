@@ -4,7 +4,7 @@ import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { revalidatePath } from 'next/cache'
 
-export async function saveDynamicCredentials(_prevState: any, formData: FormData) {
+export async function saveDynamicCredentials(_prevState: unknown, formData: FormData) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: 'Unauthorized' }
@@ -35,7 +35,7 @@ export async function saveDynamicCredentials(_prevState: any, formData: FormData
         .eq('sub_account_id', subAccountId)
         .single()
 
-    let newCredentials = { ...(settingsData?.credentials || {}) }
+    const newCredentials: Record<string, string> = { ...(settingsData?.credentials || {}) } as Record<string, string>
 
     // 3. Extract all form fields (except the hidden subAccountId)
     const entries = Array.from(formData.entries())

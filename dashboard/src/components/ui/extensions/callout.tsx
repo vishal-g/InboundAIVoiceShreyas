@@ -1,9 +1,9 @@
 import { Node, mergeAttributes } from '@tiptap/core';
-import { ReactNodeViewRenderer, NodeViewWrapper, NodeViewContent } from '@tiptap/react';
+import { ReactNodeViewRenderer, NodeViewWrapper, NodeViewContent, type NodeViewProps } from '@tiptap/react';
 import React from 'react';
 
 export interface CalloutOptions {
-    HTMLAttributes: Record<string, any>;
+    HTMLAttributes: Record<string, unknown>;
 }
 
 declare module '@tiptap/core' {
@@ -18,7 +18,7 @@ declare module '@tiptap/core' {
     }
 }
 
-const CalloutComponent = ({ node, updateAttributes }: any) => {
+const CalloutComponent = ({ node }: NodeViewProps) => {
     const { type } = node.attrs;
 
     let bgClass = 'bg-blue-50 border-blue-200 text-blue-900';

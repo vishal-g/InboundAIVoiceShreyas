@@ -3,7 +3,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { createAdminClient } from '@/utils/supabase/admin'
 import { revalidatePath } from 'next/cache'
-import type { ChecklistData, SectionWithProgress, StepWithProgress, ChecklistType, ChecklistSection, ChecklistStep } from './types'
+import type { ChecklistData, SectionWithProgress, StepWithProgress, ChecklistType, ChecklistSection, ChecklistStep, WidgetConfig, MultiStepConfig, QuizConfig } from './types'
 
 // ─── Read Operations ────────────────────────────────────────────────────────
 
@@ -222,9 +222,9 @@ export async function createStep(
     sectionId: string,
     title: string,
     description: string,
-    widgetConfig: any = null,
-    multiStepConfig: any = null,
-    quizConfig: any = null
+    widgetConfig: WidgetConfig | null = null,
+    multiStepConfig: MultiStepConfig | null = null,
+    quizConfig: QuizConfig | null = null
 ) {
     const admin = await requirePlatformAdmin()
 
@@ -295,8 +295,8 @@ export async function reorderSections(sectionIds: string[], checklistTypeId: str
         revalidatePath('/dashboard/admin/checklists')
         revalidatePath(`/dashboard/admin/checklists/${checklistTypeId}`)
         return { success: true }
-    } catch (error: any) {
-        return { success: false, error: error.message }
+    } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
     }
 }
 
@@ -307,7 +307,7 @@ export async function reorderSteps(steps: { id: string; section_id: string; titl
         if (error) throw error
         revalidatePath('/dashboard/admin/checklists')
         return { success: true }
-    } catch (error: any) {
-        return { success: false, error: error.message }
+    } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
     }
 }

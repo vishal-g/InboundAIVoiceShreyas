@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useEffect, useState } from 'react'
+import { useActionState, useEffect, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,10 +15,13 @@ export function CreateAgencyButton() {
     const [open, setOpen] = useState(false)
     const [state, formAction, isPending] = useActionState(createAgency, { success: false, error: null })
 
+    const [, startTransition] = useTransition()
     useEffect(() => {
         if (state?.success) {
             toast.success('Agency created!')
-            setOpen(false)
+            startTransition(() => {
+                setOpen(false)
+            })
         } else if (state?.error) {
             toast.error(state.error)
         }

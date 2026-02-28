@@ -75,10 +75,13 @@ export default function Sidebar({
     const isSubAccountView = !!selectedSubAccountId
 
     // Agency context param for admin pages
+    const contextParam = isSubAccountView
+        ? `?sub_account_id=${selectedSubAccountId}`
+        : selectedAgencyId ? `?agency_id=${selectedAgencyId}` : ''
     const agencyParam = selectedAgencyId ? `?agency_id=${selectedAgencyId}` : ''
 
     const navLinks = [
-        { href: `/dashboard${agencyParam}`, icon: Home, label: 'Overview' },
+        { href: `/dashboard${contextParam}`, icon: Home, label: 'Overview' },
         // Admin-level links — only when NOT viewing a specific sub-account
         ...(!isSubAccountView && (isPlatformAdmin || isAgencyAdmin)
             ? [
@@ -228,7 +231,7 @@ export default function Sidebar({
                                                     onSelect={() => {
                                                         setSelectedSubAccountId(sa.id)
                                                         setSubAccountOpen(false)
-                                                        router.push(`/dashboard/${sa.id}/settings`)
+                                                        router.push(`/dashboard?sub_account_id=${sa.id}`)
                                                     }}
                                                 >
                                                     <Users2 className={cn("mr-2 h-3 w-3 text-muted-foreground")} />

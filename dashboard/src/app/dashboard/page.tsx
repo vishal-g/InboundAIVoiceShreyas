@@ -10,10 +10,11 @@ import { Activity, Users, PhoneCall, Building2 } from 'lucide-react'
 export default async function DashboardOverview({
     searchParams,
 }: {
-    searchParams: Promise<{ agency_id?: string }>
+    searchParams: Promise<{ agency_id?: string; sub_account_id?: string }>
 }) {
     const params = await searchParams
     const agencyIdFilter = params.agency_id
+    const subAccountIdFilter = params.sub_account_id
 
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -27,19 +28,49 @@ export default async function DashboardOverview({
 
     const isPlatformAdmin = roleData?.role === 'platform_admin'
     const isAgencyAdmin = roleData?.role === 'agency_admin'
-    const subAccountId = roleData?.sub_account_id
+    const userSubAccountId = roleData?.sub_account_id
 
-    // Determine effective agency filter
-    const effectiveAgencyId = agencyIdFilter || roleData?.agency_id || null
+    // Determine effective view mode
+    const effectiveSubAccountId = subAccountIdFilter || userSubAccountId
+    const isSubAccountView = !!subAccountIdFilter || !!userSubAccountId
+    const isAgencyView = !!agencyIdFilter && !subAccountIdFilter
+    const isSuperAdminView = isPlatformAdmin && !agencyIdFilter && !subAccountIdFilter
 
     let totalAgencies = 0
     let totalSubAccounts = 0
     let totalCalls = 0
     let totalBookings = 0
-    let viewLabel = 'Your AI agent overview'
+    let viewLabel = 'Overview'
+    let subAccountName = ''
 
-    if (isPlatformAdmin && !agencyIdFilter) {
-        // Super Admin View — all data
+    if (isSubAccountView && effectiveSubAccountId) {
+        // SUB-ACCOUNT VIEW — show only this sub-account's data
+        const { data: saInfo } = await admin.from('sub_accounts').select('name').eq('id', effectiveSubAccountId).single()
+        subAccountName = saInfo?.name || ''
+        viewLabel = subAccountName ? `Viewing: ${subAccountName}` : 'Sub-account overview'
+
+        const { count: callCount } = await admin.from('call_logs').select('*', { count: 'exact', head: true }).eq('sub_account_id', effectiveSubAccountId)
+        totalCalls = callCount || 0
+        const { count: bookingCount } = await admin.from('call_logs').select('*', { count: 'exact', head: true }).eq('sub_account_id', effectiveSubAccountId).eq('was_booked', true)
+        totalBookings = bookingCount || 0
+    } else if (isAgencyView && agencyIdFilter) {
+        // AGENCY VIEW — show this agency's data
+        const { data: agencyInfo } = await admin.from('agencies').select('name').eq('id', agencyIdFilter).single()
+        viewLabel = agencyInfo ? `Viewing: ${agencyInfo.name}` : 'Agency overview'
+
+        const { count: subAccountCount } = await admin.from('sub_accounts').select('*', { count: 'exact', head: true }).eq('agency_id', agencyIdFilter)
+        totalSubAccounts = subAccountCount || 0
+
+        const { data: agencySubAccounts } = await admin.from('sub_accounts').select('id').eq('agency_id', agencyIdFilter)
+        const subIds = agencySubAccounts?.map((sa: any) => sa.id) || []
+        if (subIds.length > 0) {
+            const { count: callCount } = await admin.from('call_logs').select('*', { count: 'exact', head: true }).in('sub_account_id', subIds)
+            totalCalls = callCount || 0
+            const { count: bookingCount } = await admin.from('call_logs').select('*', { count: 'exact', head: true }).in('sub_account_id', subIds).eq('was_booked', true)
+            totalBookings = bookingCount || 0
+        }
+    } else if (isSuperAdminView) {
+        // SUPER ADMIN VIEW — all data
         viewLabel = 'Platform-wide overview'
         const { count: agencyCount } = await admin.from('agencies').select('*', { count: 'exact', head: true })
         totalAgencies = agencyCount || 0
@@ -49,46 +80,20 @@ export default async function DashboardOverview({
         totalCalls = callCount || 0
         const { count: bookingCount } = await admin.from('call_logs').select('*', { count: 'exact', head: true }).eq('was_booked', true)
         totalBookings = bookingCount || 0
-    } else if (effectiveAgencyId) {
-        // Agency-scoped view
-        const { data: agencyInfo } = await admin.from('agencies').select('name').eq('id', effectiveAgencyId).single()
-        viewLabel = agencyInfo ? `Viewing: ${agencyInfo.name}` : 'Agency overview'
-
-        const { count: subAccountCount } = await admin.from('sub_accounts').select('*', { count: 'exact', head: true }).eq('agency_id', effectiveAgencyId)
-        totalSubAccounts = subAccountCount || 0
-
-        // Get sub-account IDs for this agency to filter call logs
-        const { data: agencySubAccounts } = await admin.from('sub_accounts').select('id').eq('agency_id', effectiveAgencyId)
-        const subIds = agencySubAccounts?.map((sa: any) => sa.id) || []
-
-        if (subIds.length > 0) {
-            const { count: callCount } = await admin.from('call_logs').select('*', { count: 'exact', head: true }).in('sub_account_id', subIds)
-            totalCalls = callCount || 0
-            const { count: bookingCount } = await admin.from('call_logs').select('*', { count: 'exact', head: true }).in('sub_account_id', subIds).eq('was_booked', true)
-            totalBookings = bookingCount || 0
-        }
-    } else if (subAccountId) {
-        // Sub-account user view
-        const { count: callCount } = await admin.from('call_logs').select('*', { count: 'exact', head: true }).eq('sub_account_id', subAccountId)
-        totalCalls = callCount || 0
-        const { count: bookingCount } = await admin.from('call_logs').select('*', { count: 'exact', head: true }).eq('sub_account_id', subAccountId).eq('was_booked', true)
-        totalBookings = bookingCount || 0
     }
 
     // Fetch recent calls — scoped by context
     let recentQuery = admin.from('call_logs').select('*, sub_accounts(name)').order('created_at', { ascending: false }).limit(5)
-    if (effectiveAgencyId && !isPlatformAdmin || (isPlatformAdmin && agencyIdFilter)) {
-        const { data: agencySubAccounts } = await admin.from('sub_accounts').select('id').eq('agency_id', effectiveAgencyId!)
+    if (isSubAccountView && effectiveSubAccountId) {
+        recentQuery = recentQuery.eq('sub_account_id', effectiveSubAccountId)
+    } else if (isAgencyView && agencyIdFilter) {
+        const { data: agencySubAccounts } = await admin.from('sub_accounts').select('id').eq('agency_id', agencyIdFilter)
         const subIds = agencySubAccounts?.map((sa: any) => sa.id) || []
         if (subIds.length > 0) {
             recentQuery = recentQuery.in('sub_account_id', subIds)
         }
-    } else if (subAccountId) {
-        recentQuery = recentQuery.eq('sub_account_id', subAccountId)
     }
     const { data: recentCalls } = await recentQuery
-
-    const agencyParam = agencyIdFilter ? `?agency_id=${agencyIdFilter}` : ''
 
     return (
         <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
@@ -99,7 +104,8 @@ export default async function DashboardOverview({
 
             {/* Stat Cards */}
             <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
-                {isPlatformAdmin && !agencyIdFilter && (
+                {/* Agencies card — ONLY in super admin view */}
+                {isSuperAdminView && (
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Agencies</CardTitle>
@@ -114,7 +120,8 @@ export default async function DashboardOverview({
                     </Card>
                 )}
 
-                {(isPlatformAdmin || isAgencyAdmin || agencyIdFilter) && (
+                {/* Sub-Accounts card — in super admin and agency view, NOT sub-account view */}
+                {!isSubAccountView && (isSuperAdminView || isAgencyView) && (
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Sub-Accounts</CardTitle>
@@ -123,7 +130,7 @@ export default async function DashboardOverview({
                         <CardContent>
                             <div className="text-2xl font-bold">{totalSubAccounts}</div>
                             <p className="text-xs text-muted-foreground">
-                                <Link href={`/dashboard/sub-accounts${agencyParam}`} className="hover:underline">Manage sub-accounts →</Link>
+                                <Link href={`/dashboard/sub-accounts${agencyIdFilter ? `?agency_id=${agencyIdFilter}` : ''}`} className="hover:underline">Manage sub-accounts →</Link>
                             </p>
                         </CardContent>
                     </Card>
@@ -137,7 +144,9 @@ export default async function DashboardOverview({
                     <CardContent>
                         <div className="text-2xl font-bold">{totalCalls}</div>
                         <p className="text-xs text-muted-foreground">
-                            {subAccountId ? <Link href={`/dashboard/${subAccountId}/logs`} className="hover:underline">View call logs →</Link> : 'Across sub-accounts'}
+                            {isSubAccountView && effectiveSubAccountId
+                                ? <Link href={`/dashboard/${effectiveSubAccountId}/logs`} className="hover:underline">View call logs →</Link>
+                                : 'Across sub-accounts'}
                         </p>
                     </CardContent>
                 </Card>
@@ -187,19 +196,19 @@ export default async function DashboardOverview({
                             </div>
                         ) : (
                             <div className="text-sm text-muted-foreground py-4 text-center">
-                                No calls logged yet. Activity will appear here once AI agents handle calls.
+                                No calls logged yet.
                             </div>
                         )}
                     </CardContent>
                 </Card>
 
-                {/* Quick Links */}
+                {/* Quick Actions — context-aware */}
                 <Card>
                     <CardHeader>
                         <CardTitle>Quick Actions</CardTitle>
                     </CardHeader>
                     <CardContent className="grid gap-2">
-                        {(isPlatformAdmin && !agencyIdFilter) && (
+                        {isSuperAdminView && (
                             <>
                                 <Link href="/dashboard/agencies" className="block rounded-lg border p-3 hover:bg-accent transition-colors">
                                     <div className="font-medium text-sm">Manage Agencies</div>
@@ -211,19 +220,19 @@ export default async function DashboardOverview({
                                 </Link>
                             </>
                         )}
-                        {agencyIdFilter && (
-                            <Link href={`/dashboard/sub-accounts${agencyParam}`} className="block rounded-lg border p-3 hover:bg-accent transition-colors">
+                        {isAgencyView && (
+                            <Link href={`/dashboard/sub-accounts?agency_id=${agencyIdFilter}`} className="block rounded-lg border p-3 hover:bg-accent transition-colors">
                                 <div className="font-medium text-sm">Manage Sub-Accounts</div>
                                 <div className="text-xs text-muted-foreground">View sub-accounts for this agency</div>
                             </Link>
                         )}
-                        {subAccountId && (
+                        {isSubAccountView && effectiveSubAccountId && (
                             <>
-                                <Link href={`/dashboard/${subAccountId}/settings`} className="block rounded-lg border p-3 hover:bg-accent transition-colors">
+                                <Link href={`/dashboard/${effectiveSubAccountId}/settings`} className="block rounded-lg border p-3 hover:bg-accent transition-colors">
                                     <div className="font-medium text-sm">AI Settings</div>
                                     <div className="text-xs text-muted-foreground">Edit prompts, model, and voice</div>
                                 </Link>
-                                <Link href={`/dashboard/${subAccountId}/logs`} className="block rounded-lg border p-3 hover:bg-accent transition-colors">
+                                <Link href={`/dashboard/${effectiveSubAccountId}/logs`} className="block rounded-lg border p-3 hover:bg-accent transition-colors">
                                     <div className="font-medium text-sm">Call Logs</div>
                                     <div className="text-xs text-muted-foreground">View call history and transcripts</div>
                                 </Link>

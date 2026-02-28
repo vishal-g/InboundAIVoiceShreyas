@@ -3,6 +3,7 @@
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
+import Heading from '@tiptap/extension-heading'
 import { Bold, Italic, Strikethrough, List, ListOrdered, Link as LinkIcon, Info, CheckCircle2, AlertTriangle, Heading1, Heading2, Heading3, Code } from 'lucide-react'
 import { Toggle } from '@/components/ui/toggle'
 import { Button } from '@/components/ui/button'
@@ -23,6 +24,7 @@ export function RichTextEditor({ value, onChange }: RichTextEditorProps) {
         extensions: [
             StarterKit,
             Callout,
+            Heading.configure({ levels: [1, 2, 3] }),
             Link.configure({
                 openOnClick: false,
                 HTMLAttributes: {
@@ -33,7 +35,7 @@ export function RichTextEditor({ value, onChange }: RichTextEditorProps) {
         content: value,
         editorProps: {
             attributes: {
-                class: 'min-h-[250px] w-full rounded-md border border-input bg-background/50 px-4 py-3 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 prose prose-sm max-w-none dark:prose-invert prose-p:leading-relaxed prose-pre:p-0',
+                class: 'min-h-[250px] w-full rounded-md border border-input bg-background/50 px-4 py-3 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 !outline-none',
             },
         },
         onUpdate: ({ editor }) => {
@@ -230,7 +232,9 @@ export function RichTextEditor({ value, onChange }: RichTextEditorProps) {
                 </Button>
             </div>
 
-            <EditorContent editor={editor} />
+            <div className="prose prose-sm dark:prose-invert max-w-none">
+                <EditorContent editor={editor} />
+            </div>
         </div>
     )
 }

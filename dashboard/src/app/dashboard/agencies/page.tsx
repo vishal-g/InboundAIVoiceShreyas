@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
 import {
     Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -11,10 +12,11 @@ import { AgencyActions, CreateAgencyButton } from './agency-client'
 
 export default async function AgenciesPage() {
     const supabase = await createClient()
-
     const { data: { user } } = await supabase.auth.getUser()
 
-    const { data: roleData } = await supabase
+    const admin = createAdminClient()
+
+    const { data: roleData } = await admin
         .from('user_roles')
         .select('role')
         .eq('user_id', user?.id)
@@ -24,7 +26,7 @@ export default async function AgenciesPage() {
         redirect('/dashboard')
     }
 
-    const { data: agencies } = await supabase
+    const { data: agencies } = await admin
         .from('agencies')
         .select('*, sub_accounts(count)')
         .order('name')

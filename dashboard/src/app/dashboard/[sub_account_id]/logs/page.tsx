@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
 import {
     Table,
@@ -35,8 +36,9 @@ export default async function LogsPage(props: { params: Promise<{ sub_account_id
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) redirect('/login')
 
-    // Fetch recent call logs using actual DB column names
-    const { data: callLogs } = await supabase
+    // Fetch recent call logs using admin client
+    const admin = createAdminClient()
+    const { data: callLogs } = await admin
         .from('call_logs')
         .select('*')
         .eq('sub_account_id', subAccountId)

@@ -1,21 +1,19 @@
 'use server'
 
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 import { revalidatePath } from 'next/cache'
 
 export async function updateSettings(_prevState: any, formData: FormData) {
     const supabase = await createClient()
-
-    // Protect route
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-        return { success: false, error: 'Unauthorized' }
-    }
+    if (!user) return { success: false, error: 'Unauthorized' }
 
     const subAccountId = formData.get('sub_account_id') as string
+    const admin = createAdminClient()
 
-    // Simple RBAC check (ensure they have access to this sub_account)
-    const { data: roleData } = await supabase
+    // Simple RBAC check
+    const { data: roleData } = await admin
         .from('user_roles')
         .select('role, sub_account_id')
         .eq('user_id', user.id)
@@ -37,7 +35,7 @@ export async function updateSettings(_prevState: any, formData: FormData) {
         updated_at: new Date().toISOString(),
     }
 
-    const { error } = await supabase
+    const { error } = await admin
         .from('sub_account_settings')
         .update(updates)
         .eq('sub_account_id', subAccountId)

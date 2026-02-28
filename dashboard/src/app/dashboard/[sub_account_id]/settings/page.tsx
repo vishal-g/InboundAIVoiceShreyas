@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
 import SettingsForm from './settings-form'
 
@@ -11,8 +12,9 @@ export default async function SettingsPage(props: { params: Promise<{ sub_accoun
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) redirect('/login')
 
-    // Fetch the actual settings
-    const { data: settings } = await supabase
+    // Fetch the actual settings using admin client
+    const admin = createAdminClient()
+    const { data: settings } = await admin
         .from('sub_account_settings')
         .select('*')
         .eq('sub_account_id', subAccountId)

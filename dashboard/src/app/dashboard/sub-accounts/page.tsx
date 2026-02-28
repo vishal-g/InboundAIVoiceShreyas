@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -16,7 +17,9 @@ export default async function SubAccountsPage() {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
-    const { data: roleData } = await supabase
+    const admin = createAdminClient()
+
+    const { data: roleData } = await admin
         .from('user_roles')
         .select('role, agency_id')
         .eq('user_id', user?.id)
@@ -27,7 +30,7 @@ export default async function SubAccountsPage() {
     }
 
     // Fetch sub-accounts with their agency name and settings
-    let query = supabase
+    let query = admin
         .from('sub_accounts')
         .select('*, agencies(name), sub_account_settings(assigned_number, llm_model)')
         .order('name')
@@ -40,7 +43,7 @@ export default async function SubAccountsPage() {
     const { data: subAccounts } = await query
 
     // Fetch agencies for the create dialog dropdown
-    const { data: agencies } = await supabase.from('agencies').select('id, name').order('name')
+    const { data: agencies } = await admin.from('agencies').select('id, name').order('name')
 
     return (
         <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">

@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 import { redirect } from 'next/navigation'
 import Sidebar from '@/components/layout/sidebar'
 import Header from '@/components/layout/header'
@@ -8,20 +9,17 @@ export default async function DashboardLayout({
 }: {
     children: React.ReactNode
 }) {
+    // Auth check uses the cookie-based client
     const supabase = await createClient()
-
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
         redirect('/login')
     }
 
-    // Fetch the user's role and sub-account access
-    // For the sake of this UI, if they don't have a specific role entry, we default to a basic view
-    // In production, we'd strictly enforce this via RLS as well.
-    const { data: roleData } = await supabase
+    // Data queries use the admin client (bypasses RLS)
+    const admin = createAdminClient()
+    const { data: roleData } = await admin
         .from('user_roles')
         .select('role, sub_account_id, agency_id')
         .eq('user_id', user.id)

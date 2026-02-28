@@ -1,4 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 import Link from 'next/link'
 import {
     Card, CardContent, CardDescription, CardHeader, CardTitle,
@@ -8,10 +9,11 @@ import { Activity, Users, PhoneCall, Building2 } from 'lucide-react'
 
 export default async function DashboardOverview() {
     const supabase = await createClient()
-
     const { data: { user } } = await supabase.auth.getUser()
 
-    const { data: roleData } = await supabase
+    const admin = createAdminClient()
+
+    const { data: roleData } = await admin
         .from('user_roles')
         .select('*')
         .eq('user_id', user?.id)
@@ -27,26 +29,26 @@ export default async function DashboardOverview() {
     let totalBookings = 0
 
     if (isPlatformAdmin) {
-        const { count: agencyCount } = await supabase.from('agencies').select('*', { count: 'exact', head: true })
+        const { count: agencyCount } = await admin.from('agencies').select('*', { count: 'exact', head: true })
         totalAgencies = agencyCount || 0
-        const { count: subAccountCount } = await supabase.from('sub_accounts').select('*', { count: 'exact', head: true })
+        const { count: subAccountCount } = await admin.from('sub_accounts').select('*', { count: 'exact', head: true })
         totalSubAccounts = subAccountCount || 0
-        const { count: callCount } = await supabase.from('call_logs').select('*', { count: 'exact', head: true })
+        const { count: callCount } = await admin.from('call_logs').select('*', { count: 'exact', head: true })
         totalCalls = callCount || 0
-        const { count: bookingCount } = await supabase.from('call_logs').select('*', { count: 'exact', head: true }).eq('was_booked', true)
+        const { count: bookingCount } = await admin.from('call_logs').select('*', { count: 'exact', head: true }).eq('was_booked', true)
         totalBookings = bookingCount || 0
     } else if (isAgencyAdmin && roleData?.agency_id) {
-        const { count: subAccountCount } = await supabase.from('sub_accounts').select('*', { count: 'exact', head: true }).eq('agency_id', roleData.agency_id)
+        const { count: subAccountCount } = await admin.from('sub_accounts').select('*', { count: 'exact', head: true }).eq('agency_id', roleData.agency_id)
         totalSubAccounts = subAccountCount || 0
     } else if (subAccountId) {
-        const { count: callCount } = await supabase.from('call_logs').select('*', { count: 'exact', head: true }).eq('sub_account_id', subAccountId)
+        const { count: callCount } = await admin.from('call_logs').select('*', { count: 'exact', head: true }).eq('sub_account_id', subAccountId)
         totalCalls = callCount || 0
-        const { count: bookingCount } = await supabase.from('call_logs').select('*', { count: 'exact', head: true }).eq('sub_account_id', subAccountId).eq('was_booked', true)
+        const { count: bookingCount } = await admin.from('call_logs').select('*', { count: 'exact', head: true }).eq('sub_account_id', subAccountId).eq('was_booked', true)
         totalBookings = bookingCount || 0
     }
 
     // Fetch recent calls for the activity feed
-    let recentQuery = supabase.from('call_logs').select('*, sub_accounts(name)').order('created_at', { ascending: false }).limit(5)
+    let recentQuery = admin.from('call_logs').select('*, sub_accounts(name)').order('created_at', { ascending: false }).limit(5)
     if (!isPlatformAdmin && subAccountId) {
         recentQuery = recentQuery.eq('sub_account_id', subAccountId)
     }

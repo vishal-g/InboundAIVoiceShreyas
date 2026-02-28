@@ -67,12 +67,13 @@ export async function savePrompt(_prevState: unknown, formData: FormData) {
 
     const subAccountId = formData.get('sub_account_id') as string
     const aiType = formData.get('ai_type') as 'text' | 'voice'
+    const promptKey = formData.get('prompt_key') as string
     const name = formData.get('name') as string
     const description = formData.get('description') as string
     const content = formData.get('content') as string
     const id = formData.get('id') as string || undefined
 
-    if (!subAccountId || !aiType || !name || !content) {
+    if (!subAccountId || !aiType || !promptKey || !name || !content) {
         return { success: false, error: 'Missing required fields' }
     }
 
@@ -99,6 +100,7 @@ export async function savePrompt(_prevState: unknown, formData: FormData) {
             ...(id ? { id } : {}),
             sub_account_id: subAccountId,
             ai_type: aiType,
+            prompt_key: promptKey,
             name: name,
             description: description,
             content: content,

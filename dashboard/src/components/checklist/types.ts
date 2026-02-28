@@ -63,6 +63,7 @@ export type ChecklistStep = {
     description: string | null
     sort_order: number
     widget_type: 'credentials' | 'prompt' | null
+    widget_key: string | null
     widget_title: string | null
     widget_config: WidgetConfig | null
     multi_step_config: MultiStepConfig | null
@@ -97,5 +98,5 @@ export type ChecklistData = {
     completedSteps: number
     percentage: number
     credentials: Record<string, string>
-    prompts: Record<string, { id?: string, description: string, content: string }>
+    prompts: Record<string, { id?: string, name: string, description: string, content: string }>
 }

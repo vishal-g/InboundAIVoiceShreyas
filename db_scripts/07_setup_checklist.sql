@@ -32,9 +32,11 @@ CREATE TABLE IF NOT EXISTS checklist_steps (
     description TEXT,
     sort_order INTEGER NOT NULL DEFAULT 0,
     widget_type TEXT CHECK (widget_type IN ('credentials', 'prompt')),
+    widget_key TEXT, -- e.g. 'prompt_0', 'stripe_keys'
     widget_title TEXT,
     widget_config JSONB,
     multi_step_config JSONB,
+    quiz_config JSONB,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -46,6 +48,21 @@ DO $$ BEGIN
     END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'checklist_steps' AND column_name = 'widget_title') THEN
         ALTER TABLE checklist_steps ADD COLUMN widget_title TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'checklist_steps' AND column_name = 'widget_key') THEN
+        ALTER TABLE checklist_steps ADD COLUMN widget_key TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'checklist_steps' AND column_name = 'multi_step_config') THEN
+        ALTER TABLE checklist_steps ADD COLUMN multi_step_config JSONB;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'checklist_steps' AND column_name = 'quiz_config') THEN
+        ALTER TABLE checklist_steps ADD COLUMN quiz_config JSONB;
+    END IF;
+
+    -- Add constraint for mandatory prompt key
+    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE table_name = 'checklist_steps' AND constraint_name = 'prompt_key_required_if_prompt_type') THEN
+        ALTER TABLE checklist_steps ADD CONSTRAINT prompt_key_required_if_prompt_type 
+        CHECK (widget_type != 'prompt' OR widget_key IS NOT NULL);
     END IF;
 END $$;
 

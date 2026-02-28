@@ -32,6 +32,7 @@ type Step = {
     description: string | null
     sort_order: number
     widget_type: 'credentials' | 'prompt' | null
+    widget_key: string | null
     widget_title: string | null
     widget_config?: any
     multi_step_config?: any
@@ -79,6 +80,7 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
     const [multiStepConfig, setMultiStepConfig] = useState<any>({ slides: [] })
     const [quizConfig, setQuizConfig] = useState<any>({ title: '', threshold: 100, questions: [] })
     const [stepWidgetType, setStepWidgetType] = useState<'credentials' | 'prompt' | ''>('')
+    const [stepWidgetKey, setStepWidgetKey] = useState('')
     const [stepWidgetTitle, setStepWidgetTitle] = useState('')
     const [activeTab, setActiveTab] = useState<'content' | 'substeps' | 'quiz' | 'widget'>('content')
 
@@ -201,6 +203,11 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
         const fd = new FormData(e.currentTarget)
         const title = fd.get('title') as string
 
+        if (stepWidgetType === 'prompt' && !stepWidgetKey.trim()) {
+            toast.error('Widget Key is mandatory for Prompt Editor')
+            return
+        }
+
         let parsedWidgetConfig = null
         if (stepWidgetConfig.trim()) {
             try {
@@ -216,6 +223,7 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
                 title,
                 description: stepDescription,
                 widget_type: stepWidgetType || null,
+                widget_key: stepWidgetKey || null,
                 widget_title: stepWidgetTitle || null,
                 widget_config: parsedWidgetConfig,
                 multi_step_config: multiStepConfig,
@@ -230,6 +238,7 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
                     title,
                     stepDescription,
                     stepWidgetType || null,
+                    stepWidgetKey || null,
                     stepWidgetTitle || null,
                     parsedWidgetConfig
                 )
@@ -237,10 +246,10 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
                 res.success ? toast.success('Step created') : toast.error(res.error || 'Failed')
             }
             setStepDialogOpen(false)
-            setEditingStep(null)
             setStepDescription('')
             setStepWidgetConfig('')
             setStepWidgetType('')
+            setStepWidgetKey('')
             setStepWidgetTitle('')
             setMultiStepConfig({ slides: [] })
             setQuizConfig({ title: '', threshold: 100, questions: [] })
@@ -254,6 +263,7 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
         setStepDescription('')
         setStepWidgetConfig('')
         setStepWidgetType('')
+        setStepWidgetKey('')
         setStepWidgetTitle('')
         setStepDialogOpen(true)
     }
@@ -264,6 +274,7 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
         setStepDescription(step.description || '')
         setStepWidgetConfig(step.widget_config ? JSON.stringify(step.widget_config, null, 2) : '')
         setStepWidgetType(step.widget_type || '')
+        setStepWidgetKey(step.widget_key || '')
         setStepWidgetTitle(step.widget_title || '')
         setMultiStepConfig(step.multi_step_config || { slides: [] })
         setQuizConfig(step.quiz_config || { title: '', threshold: 100, questions: [] })
@@ -550,9 +561,17 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
                                             </select>
                                         </div>
                                         <div className="space-y-2">
-                                            <Label>Widget Title</Label>
+                                            <Label>Widget Key (Stable ID)</Label>
                                             <Input
-                                                placeholder="e.g. OpenAI API Key"
+                                                placeholder="e.g. prompt_0 or openai_api_key"
+                                                value={stepWidgetKey}
+                                                onChange={(e) => setStepWidgetKey(e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="col-span-2 space-y-2">
+                                            <Label>Widget Title (Display Name)</Label>
+                                            <Input
+                                                placeholder="e.g. Master System Prompt"
                                                 value={stepWidgetTitle}
                                                 onChange={(e) => setStepWidgetTitle(e.target.value)}
                                             />

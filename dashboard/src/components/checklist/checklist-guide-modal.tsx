@@ -19,7 +19,7 @@ type Props = {
     subAccountId: string
     basePath: string
     credentials: Record<string, string>
-    prompts: Record<string, { description: string, content: string }>
+    prompts: Record<string, { id?: string, name: string, description: string, content: string }>
 }
 
 export default function ChecklistGuideModal({
@@ -297,8 +297,8 @@ export default function ChecklistGuideModal({
                                             <PromptEditorWidget
                                                 subAccountId={subAccountId}
                                                 aiType={activeSection?.checklist_type_id?.includes('voice') ? 'voice' : 'text'}
-                                                promptName={activeStep.widget_title || activeStep.title}
-                                                existingPrompt={prompts[activeStep.widget_title || activeStep.title]}
+                                                promptKey={activeStep.widget_key || ''}
+                                                existingPrompt={prompts[activeStep.widget_key || ''] || { name: '', description: '', content: '' }}
                                             />
                                         </div>
                                     )}

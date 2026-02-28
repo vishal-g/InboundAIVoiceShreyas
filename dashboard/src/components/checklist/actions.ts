@@ -88,12 +88,12 @@ export async function getChecklistData(
     // 7. Fetch existing prompts
     const { data: promptsData } = await admin
         .from('prompts')
-        .select('id, name, description, content')
+        .select('id, prompt_key, name, description, content')
         .eq('sub_account_id', subAccountId)
 
-    const prompts: Record<string, { id: string, description: string, content: string }> = {}
+    const prompts: Record<string, { id: string, name: string, description: string, content: string }> = {}
     promptsData?.forEach(p => {
-        prompts[p.name] = { id: p.id, description: p.description || '', content: p.content }
+        prompts[p.prompt_key] = { id: p.id, name: p.name, description: p.description || '', content: p.content }
     })
 
     return {
@@ -235,11 +235,15 @@ export async function createStep(
     title: string,
     description: string,
     widgetType: 'credentials' | 'prompt' | null = null,
+    widgetKey: string | null = null,
     widgetTitle: string | null = null,
     widgetConfig: WidgetConfig | null = null,
     multiStepConfig: MultiStepConfig | null = null,
     quizConfig: QuizConfig | null = null
 ) {
+    if (widgetType === 'prompt' && !widgetKey) {
+        return { success: false, error: 'Widget Key is required for prompt widgets', data: null }
+    }
     const admin = await requirePlatformAdmin()
 
     const { data: existing } = await admin
@@ -258,6 +262,7 @@ export async function createStep(
             title,
             description,
             widget_type: widgetType,
+            widget_key: widgetKey,
             widget_title: widgetTitle,
             widget_config: widgetConfig,
             multi_step_config: multiStepConfig,
@@ -273,6 +278,9 @@ export async function createStep(
 }
 
 export async function updateStep(stepId: string, updates: Partial<ChecklistStep>) {
+    if (updates.widget_type === 'prompt' && !updates.widget_key) {
+        return { success: false, error: 'Widget Key is required for prompt widgets' }
+    }
     const admin = await requirePlatformAdmin()
     const { error } = await admin
         .from('checklist_steps')

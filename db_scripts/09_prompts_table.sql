@@ -5,13 +5,14 @@ CREATE TABLE IF NOT EXISTS prompts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     sub_account_id UUID REFERENCES sub_accounts(id) ON DELETE CASCADE,
     ai_type TEXT NOT NULL CHECK (ai_type IN ('text', 'voice')),
+    prompt_key TEXT NOT NULL, -- e.g. prompt_0, prompt_1
     name TEXT NOT NULL,
     description TEXT,
     content TEXT NOT NULL,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE (sub_account_id, ai_type, name)
+    UNIQUE (sub_account_id, ai_type, prompt_key)
 );
 
 -- Enable RLS

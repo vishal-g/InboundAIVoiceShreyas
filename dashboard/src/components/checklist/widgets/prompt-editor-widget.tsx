@@ -12,9 +12,10 @@ import { savePrompt } from './actions'
 type PromptEditorWidgetProps = {
     subAccountId: string
     aiType: 'text' | 'voice'
-    promptName: string
+    promptKey: string
     existingPrompt?: {
         id?: string
+        name: string
         description: string
         content: string
     }
@@ -23,7 +24,7 @@ type PromptEditorWidgetProps = {
 export function PromptEditorWidget({
     subAccountId,
     aiType,
-    promptName,
+    promptKey,
     existingPrompt
 }: PromptEditorWidgetProps) {
     const [state, formAction, isPending] = useActionState(savePrompt, { success: false, error: null })
@@ -41,7 +42,7 @@ export function PromptEditorWidget({
             <div className="flex items-center gap-2 border-b border-border bg-muted/40 px-5 py-3">
                 <span className="text-sm font-semibold tracking-wide text-foreground flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-primary/70" />
-                    Configure Prompt
+                    Configure Prompt: <span className="font-mono text-primary">{promptKey}</span>
                 </span>
             </div>
 
@@ -49,17 +50,18 @@ export function PromptEditorWidget({
                 <form action={formAction} className="space-y-4">
                     <input type="hidden" name="sub_account_id" value={subAccountId} />
                     <input type="hidden" name="ai_type" value={aiType} />
+                    <input type="hidden" name="prompt_key" value={promptKey} />
                     <input type="hidden" name="id" value={existingPrompt?.id || ''} />
 
                     <div className="space-y-2">
                         <Label htmlFor="name" className="text-sm font-medium">
-                            Prompt Name (Title)
+                            Display Name / Title
                         </Label>
                         <Input
                             id="name"
                             name="name"
                             placeholder="e.g. Master System Prompt"
-                            defaultValue={promptName}
+                            defaultValue={existingPrompt?.name || ''}
                             className="bg-background font-medium"
                             required
                         />
@@ -87,7 +89,7 @@ export function PromptEditorWidget({
                             name="content"
                             placeholder="Type your prompt instructions here..."
                             defaultValue={existingPrompt?.content || ''}
-                            className="min-h-[200px] bg-background font-mono text-sm leading-relaxed"
+                            className="min-h-[250px] bg-background font-mono text-sm leading-relaxed"
                             required
                         />
                     </div>

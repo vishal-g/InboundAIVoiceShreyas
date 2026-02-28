@@ -161,9 +161,21 @@ async function requirePlatformAdmin() {
 }
 
 // Checklist Types CRUD
-export async function createChecklistType(id: string, title: string, description: string, icon: string) {
+export async function createChecklistType(
+    id: string,
+    title: string,
+    description: string,
+    icon: string,
+    displayType: 'checklist' | 'page' = 'checklist'
+) {
     const admin = await requirePlatformAdmin()
-    const { error } = await admin.from('checklist_types').insert({ id, title, description, icon })
+    const { error } = await admin.from('checklist_types').insert({
+        id,
+        title,
+        description,
+        icon,
+        display_type: displayType
+    })
     if (error) return { success: false, error: error.message }
     revalidatePath('/dashboard/admin/checklists')
     return { success: true, error: null }

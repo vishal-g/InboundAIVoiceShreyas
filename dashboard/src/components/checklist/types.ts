@@ -5,6 +5,7 @@ export type ChecklistType = {
     title: string
     description: string | null
     icon: string | null
+    display_type?: 'checklist' | 'page'
     created_at: string
 }
 

@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { CheckCircle2, ChevronDown, ChevronRight, ArrowLeft } from 'lucide-react'
 import { toggleStepCompletion } from './actions'
-import type { SectionWithProgress } from './types'
+import type { SectionWithProgress, ChecklistType } from './types'
 import { DynamicStepsWidget } from './widgets/dynamic-steps-widget'
 import { PromptEditorWidget } from './widgets/prompt-editor-widget'
 import { MultiStepProgress } from './multi-step-progress'
@@ -14,6 +14,7 @@ import { QuizWidget } from './quiz-widget'
 type Props = {
     open: boolean
     onOpenChange: (open: boolean) => void
+    checklistType: ChecklistType
     sections: SectionWithProgress[]
     initialSectionId: string
     subAccountId: string
@@ -25,6 +26,7 @@ type Props = {
 export default function ChecklistGuideModal({
     open,
     onOpenChange,
+    checklistType,
     sections,
     initialSectionId,
     subAccountId,
@@ -178,15 +180,18 @@ export default function ChecklistGuideModal({
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-none w-[95vw] h-[90vh] p-0 gap-0 flex flex-col overflow-hidden">
-                <DialogTitle className="sr-only">Checklist Guide</DialogTitle>
+                <DialogTitle className="sr-only">{checklistType.title || 'Page View'}</DialogTitle>
                 {/* Header */}
-                <div className="px-6 py-4 border-b flex-shrink-0">
-                    <h2 className="text-lg font-semibold">
-                        {activeSection?.title || 'Setup Guide'}
-                    </h2>
-                    <p className="text-sm text-muted-foreground">
-                        Follow everything step-by-step not skipping any single action.
-                    </p>
+                <div className="px-6 py-4 border-b flex-shrink-0 flex items-center justify-between">
+                    <div>
+                        <h2 className="text-lg font-semibold flex items-center gap-2">
+                            <span>{checklistType.icon}</span>
+                            {activeSection?.title || checklistType.title}
+                        </h2>
+                        <p className="text-sm text-muted-foreground">
+                            {activeSection?.description || checklistType.description}
+                        </p>
+                    </div>
                 </div>
 
                 {/* Body */}
@@ -198,9 +203,11 @@ export default function ChecklistGuideModal({
                                 <div key={section.id}>
                                     <button
                                         onClick={() => toggleSection(section.id)}
-                                        className={`w-full flex items-center justify-between px-3 py-3 rounded-lg text-base font-bold tracking-wide transition-colors border-2 cursor-pointer ${section.completedSteps === section.totalSteps && section.totalSteps > 0
-                                            ? 'border-emerald-500 bg-emerald-50/30 text-emerald-950'
-                                            : 'border-red-500 bg-red-50/30 text-red-950'
+                                        className={`w-full flex items-center justify-between px-3 py-3 rounded-lg text-base font-bold tracking-wide transition-colors border-2 cursor-pointer ${checklistType.display_type === 'page'
+                                            ? 'border-slate-300 bg-background text-foreground'
+                                            : section.completedSteps === section.totalSteps && section.totalSteps > 0
+                                                ? 'border-emerald-500 bg-emerald-50/30 text-emerald-950'
+                                                : 'border-red-500 bg-red-50/30 text-red-950'
                                             } ${activeSectionId === section.id ? 'ring-2 ring-primary/20' : ''}`}
                                     >
                                         <span className="truncate">{section.title}</span>
@@ -222,10 +229,13 @@ export default function ChecklistGuideModal({
                                                             : 'border-transparent hover:bg-muted/30 text-muted-foreground'
                                                             } ${done && activeStepId !== step.id ? 'border-emerald-400' : ''}`}
                                                     >
-                                                        {done
-                                                            ? <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
-                                                            : <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 border-muted-foreground/60 text-[10px] text-muted-foreground font-semibold">{index + 1}</div>
-                                                        }
+                                                        {checklistType.display_type === 'page' ? (
+                                                            <div className="w-1.5 h-1.5 rounded-full bg-slate-300 flex-shrink-0" />
+                                                        ) : done ? (
+                                                            <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+                                                        ) : (
+                                                            <div className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 border-muted-foreground/60 text-[10px] text-muted-foreground font-semibold">{index + 1}</div>
+                                                        )}
                                                         <span className={`truncate tracking-tight text-[15px] font-medium leading-tight ${activeStepId === step.id ? 'text-slate-800' : ''}`}>{step.title}</span>
                                                     </button>
                                                 )
@@ -263,8 +273,8 @@ export default function ChecklistGuideModal({
 
                                     {!showQuiz ? (
                                         <div className="prose prose-base whitespace-pre-line max-w-none text-muted-foreground leading-relaxed prose-p:leading-relaxed prose-a:text-primary prose-a:underline prose-ul:list-disc prose-ol:list-decimal prose-ul:ml-4 prose-ol:ml-4">
-                                            {activeStep.multi_step_config?.slides ? (
-                                                <div dangerouslySetInnerHTML={{ __html: activeStep.multi_step_config.slides[currentSlideIndex].content }} />
+                                            {activeStep.multi_step_config?.slides?.length > 0 ? (
+                                                <div dangerouslySetInnerHTML={{ __html: activeStep.multi_step_config.slides[currentSlideIndex]?.content || '' }} />
                                             ) : activeStep.description ? (
                                                 <div dangerouslySetInnerHTML={{ __html: activeStep.description }} />
                                             ) : (
@@ -322,21 +332,25 @@ export default function ChecklistGuideModal({
                                 Back
                             </Button>
                             <div className="flex items-center gap-3">
-                                {!isStepDone && activeStep?.quiz_config && !quizPassed && (
-                                    <span className="text-xs text-muted-foreground mr-2 italic">Pass quiz to continue</span>
+                                {checklistType.display_type !== 'page' && (
+                                    <>
+                                        {!isStepDone && activeStep?.quiz_config && !quizPassed && (
+                                            <span className="text-xs text-muted-foreground mr-2 italic">Pass quiz to continue</span>
+                                        )}
+                                        <Button
+                                            size="sm"
+                                            onClick={handleToggleDone}
+                                            disabled={!activeStepId || isPending || (activeStep?.quiz_config && !quizPassed && !isStepDone)}
+                                            className={`gap-2 min-w-[120px] text-white border-0 ${isStepDone
+                                                ? 'bg-slate-500 hover:bg-slate-600'
+                                                : 'bg-violet-500 hover:bg-violet-600'
+                                                }`}
+                                        >
+                                            <CheckCircle2 className="w-4 h-4" />
+                                            {isStepDone ? 'Undone' : 'Done'}
+                                        </Button>
+                                    </>
                                 )}
-                                <Button
-                                    size="sm"
-                                    onClick={handleToggleDone}
-                                    disabled={!activeStepId || isPending || (activeStep?.quiz_config && !quizPassed && !isStepDone)}
-                                    className={`gap-2 min-w-[120px] text-white border-0 ${isStepDone
-                                        ? 'bg-slate-500 hover:bg-slate-600'
-                                        : 'bg-violet-500 hover:bg-violet-600'
-                                        }`}
-                                >
-                                    <CheckCircle2 className="w-4 h-4" />
-                                    {isStepDone ? 'Undone' : 'Done'}
-                                </Button>
                             </div>
                         </div>
                     </div>

@@ -72,20 +72,24 @@ export default function ChecklistSectionCards({ data, subAccountId, basePath }: 
                             <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
                                 {section.description}
                             </p>
-                            <div className="flex items-center justify-between text-sm">
-                                <span className="text-muted-foreground font-medium">
-                                    {section.completedSteps}/{section.totalSteps} steps
-                                </span>
-                                <span className={`font-bold ${colors.text}`}>
-                                    {section.percentage}%
-                                </span>
-                            </div>
-                            <div className="w-full bg-muted rounded-full h-2 mt-2 overflow-hidden">
-                                <div
-                                    className={`h-full rounded-full transition-all duration-500 ease-out ${colors.barBg}`}
-                                    style={{ width: `${section.percentage}%` }}
-                                />
-                            </div>
+                            {data.checklistType.display_type !== 'page' && (
+                                <>
+                                    <div className="flex items-center justify-between text-sm">
+                                        <span className="text-muted-foreground font-medium">
+                                            {section.completedSteps}/{section.totalSteps} steps
+                                        </span>
+                                        <span className={`font-bold ${colors.text}`}>
+                                            {section.percentage}%
+                                        </span>
+                                    </div>
+                                    <div className="w-full bg-muted rounded-full h-2 mt-2 overflow-hidden">
+                                        <div
+                                            className={`h-full rounded-full transition-all duration-500 ease-out ${colors.barBg}`}
+                                            style={{ width: `${section.percentage}%` }}
+                                        />
+                                    </div>
+                                </>
+                            )}
                         </button>
                     )
                 })}
@@ -95,6 +99,7 @@ export default function ChecklistSectionCards({ data, subAccountId, basePath }: 
                 <ChecklistGuideModal
                     open={isModalOpen}
                     onOpenChange={setIsModalOpen}
+                    checklistType={data.checklistType}
                     sections={data.sections}
                     initialSectionId={selectedSection.id}
                     subAccountId={subAccountId}

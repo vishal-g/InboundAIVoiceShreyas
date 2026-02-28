@@ -59,7 +59,7 @@ export default async function ChecklistTypeManagePage({ params }: Props) {
             <div className="mb-6">
                 <Link href="/dashboard/admin/checklists" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4">
                     <ArrowLeft className="w-4 h-4" />
-                    Back to Checklists
+                    Back to Pages
                 </Link>
                 <div className="flex items-center gap-3">
                     <span className="text-2xl">{checklistType.icon || '📋'}</span>

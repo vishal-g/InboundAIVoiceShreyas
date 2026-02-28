@@ -76,7 +76,7 @@ export default function Sidebar({
     const isPlatformAdmin = userRole === 'platform_admin'
     const isAgencyAdmin = userRole === 'agency_admin'
 
-    const [selectedAgencyId, setSelectedAgencyId] = useState(agencyId || agencies[0]?.id || '')
+    const [selectedAgencyId, setSelectedAgencyId] = useState(agencyId || '')
     const [selectedSubAccountId, setSelectedSubAccountId] = useState(subAccountId || '')
     const [agencyOpen, setAgencyOpen] = useState(false)
     const [subAccountOpen, setSubAccountOpen] = useState(false)
@@ -146,7 +146,7 @@ export default function Sidebar({
             ? [
                 { href: '/dashboard/agencies', icon: Building2, label: 'Agencies' },
                 { href: '/dashboard/sub-accounts', icon: Users2, label: 'Sub-Accounts' },
-                { href: '/dashboard/admin/checklists', icon: ClipboardList, label: 'Manage Checklists' },
+                { href: '/dashboard/admin/checklists', icon: Layout, label: 'Manage Pages' },
                 { href: '/dashboard/admin/navigation', icon: Layout, label: 'Manage Menu' },
             ]
             : []),

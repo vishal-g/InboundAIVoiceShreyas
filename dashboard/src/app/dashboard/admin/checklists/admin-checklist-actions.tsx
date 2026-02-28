@@ -24,10 +24,11 @@ export default function AdminChecklistActions() {
                 formData.get('id') as string,
                 formData.get('title') as string,
                 formData.get('description') as string,
-                formData.get('icon') as string
+                formData.get('icon') as string,
+                formData.get('display_type') as 'checklist' | 'page'
             )
             if (result.success) {
-                toast.success('Checklist type created!')
+                toast.success('Page created successfully!')
                 setIsOpen(false)
                 router.refresh()
             } else {
@@ -40,16 +41,28 @@ export default function AdminChecklistActions() {
         <>
             <Button onClick={() => setIsOpen(true)} size="sm" className="gap-2">
                 <Plus className="w-4 h-4" />
-                New Checklist
+                New Page
             </Button>
 
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Create New Checklist Type</DialogTitle>
+                        <DialogTitle>Create New Page</DialogTitle>
                     </DialogHeader>
                     <form onSubmit={handleCreate}>
                         <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="display_type">Display Type</Label>
+                                <select
+                                    id="display_type"
+                                    name="display_type"
+                                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    defaultValue="checklist"
+                                >
+                                    <option value="checklist">Checklist (Progress tracking, Done buttons)</option>
+                                    <option value="page">Page (Static content, no progress)</option>
+                                </select>
+                            </div>
                             <div className="space-y-2">
                                 <Label htmlFor="id">ID (slug)</Label>
                                 <Input
@@ -64,21 +77,21 @@ export default function AdminChecklistActions() {
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="title">Title</Label>
-                                <Input id="title" name="title" placeholder="e.g. Voice AI Rep Setup Progress" required />
+                                <Input id="title" name="title" placeholder="e.g. Platform Credentials" required />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="description">Description</Label>
-                                <Textarea id="description" name="description" placeholder="e.g. Complete all phases to enable Voice AI reps" />
+                                <Textarea id="description" name="description" placeholder="e.g. Manage your API keys and AI behaviors" />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="icon">Icon (emoji)</Label>
-                                <Input id="icon" name="icon" placeholder="e.g. 🎙️" defaultValue="📋" />
+                                <Input id="icon" name="icon" placeholder="e.g. 🔑" defaultValue="📄" />
                             </div>
                         </div>
                         <DialogFooter>
                             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
                             <Button type="submit" disabled={isPending}>
-                                {isPending ? 'Creating...' : 'Create'}
+                                {isPending ? 'Creating...' : 'Create Page'}
                             </Button>
                         </DialogFooter>
                     </form>

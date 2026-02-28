@@ -75,6 +75,7 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
     const [stepDialogOpen, setStepDialogOpen] = useState(false)
     const [editingStep, setEditingStep] = useState<Step | null>(null)
     const [stepSectionId, setStepSectionId] = useState<string>('')
+    const [stepTitle, setStepTitle] = useState('')
     const [stepDescription, setStepDescription] = useState('')
     const [stepWidgetConfig, setStepWidgetConfig] = useState('')
     const [multiStepConfig, setMultiStepConfig] = useState<any>({ slides: [] })
@@ -200,8 +201,11 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
     // ── Step CRUD ────────────────────────────────────
     const handleSaveStep = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
-        const fd = new FormData(e.currentTarget)
-        const title = fd.get('title') as string
+
+        if (!stepTitle.trim()) {
+            toast.error('Step title is required')
+            return
+        }
 
         if (stepWidgetType === 'prompt' && !stepWidgetKey.trim()) {
             toast.error('Widget Key is mandatory for Prompt Editor')
@@ -220,7 +224,7 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
 
         startTransition(async () => {
             const updates = {
-                title,
+                title: stepTitle,
                 description: stepDescription,
                 widget_type: stepWidgetType || null,
                 widget_key: stepWidgetKey || null,
@@ -235,17 +239,20 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
             } else {
                 const res = await createStep(
                     stepSectionId,
-                    title,
+                    stepTitle,
                     stepDescription,
                     stepWidgetType || null,
                     stepWidgetKey || null,
                     stepWidgetTitle || null,
-                    parsedWidgetConfig
+                    parsedWidgetConfig,
+                    multiStepConfig,
+                    quizConfig
                 )
                 // Note: createStep might need updating to handle all configs if we want them at creation
                 res.success ? toast.success('Step created') : toast.error(res.error || 'Failed')
             }
             setStepDialogOpen(false)
+            setStepTitle('')
             setStepDescription('')
             setStepWidgetConfig('')
             setStepWidgetType('')
@@ -260,6 +267,7 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
     const openAddStep = (sectionId: string) => {
         setEditingStep(null)
         setStepSectionId(sectionId)
+        setStepTitle('')
         setStepDescription('')
         setStepWidgetConfig('')
         setStepWidgetType('')
@@ -271,6 +279,7 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
     const openEditStep = (step: Step, sectionId: string) => {
         setEditingStep(step)
         setStepSectionId(sectionId)
+        setStepTitle(step.title)
         setStepDescription(step.description || '')
         setStepWidgetConfig(step.widget_config ? JSON.stringify(step.widget_config, null, 2) : '')
         setStepWidgetType(step.widget_type || '')
@@ -516,7 +525,7 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
                                 { id: 'content', label: 'Basic Content' },
                                 { id: 'substeps', label: 'Sub-steps' },
                                 { id: 'quiz', label: 'Confirmation Quiz' },
-                                { id: 'widget', label: 'Dynamic Form (JSON)' },
+                                { id: 'widget', label: 'Interactive Widget' },
                             ].map((tab) => (
                                 <button
                                     key={tab.id}
@@ -537,7 +546,12 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
                                 <>
                                     <div className="space-y-2">
                                         <Label>Title</Label>
-                                        <Input name="title" defaultValue={editingStep?.title || ''} required />
+                                        <Input
+                                            value={stepTitle}
+                                            onChange={(e) => setStepTitle(e.target.value)}
+                                            placeholder="Step Title"
+                                            required
+                                        />
                                     </div>
                                     <div className="space-y-2">
                                         <Label>Description / Instructions</Label>
@@ -546,8 +560,26 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
                                             onChange={setStepDescription}
                                         />
                                     </div>
+                                </>
+                            )}
 
-                                    <div className="grid grid-cols-2 gap-4 pt-4 border-t mt-4">
+                            {activeTab === 'substeps' && (
+                                <SubStepEditor
+                                    config={multiStepConfig}
+                                    onChange={setMultiStepConfig}
+                                />
+                            )}
+
+                            {activeTab === 'quiz' && (
+                                <QuizEditor
+                                    config={quizConfig}
+                                    onChange={setQuizConfig}
+                                />
+                            )}
+
+                            {activeTab === 'widget' && (
+                                <div className="space-y-6 pt-2">
+                                    <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2">
                                             <Label>Widget Type</Label>
                                             <select
@@ -577,35 +609,29 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
                                             />
                                         </div>
                                     </div>
-                                </>
-                            )}
 
-                            {activeTab === 'substeps' && (
-                                <SubStepEditor
-                                    config={multiStepConfig}
-                                    onChange={setMultiStepConfig}
-                                />
-                            )}
+                                    {stepWidgetType !== '' && (
+                                        <div className="space-y-2 pt-4 border-t">
+                                            <Label>Widget Configuration (JSON)</Label>
+                                            <p className="text-[11px] text-muted-foreground leading-tight mb-1">
+                                                {stepWidgetType === 'credentials'
+                                                    ? 'Define the fields for this dynamic credential form.'
+                                                    : 'Optionally attach configuration JSON for this widget.'}
+                                            </p>
+                                            <Textarea
+                                                value={stepWidgetConfig}
+                                                onChange={(e) => setStepWidgetConfig(e.target.value)}
+                                                className="font-mono text-xs min-h-[250px]"
+                                                placeholder='{&#10;  "title": "LLM Credentials",&#10;  "fields": [&#10;    { "key": "openai_api_key", "label": "OpenAI API Key", "type": "password", "required": true }&#10;  ]&#10;}'
+                                            />
+                                        </div>
+                                    )}
 
-                            {activeTab === 'quiz' && (
-                                <QuizEditor
-                                    config={quizConfig}
-                                    onChange={setQuizConfig}
-                                />
-                            )}
-
-                            {activeTab === 'widget' && (
-                                <div className="space-y-2 pt-2">
-                                    <Label>Widget Configuration (JSON)</Label>
-                                    <p className="text-[11px] text-muted-foreground leading-tight mb-1">
-                                        Optionally attach an interactive credential form. Must be valid JSON.
-                                    </p>
-                                    <Textarea
-                                        value={stepWidgetConfig}
-                                        onChange={(e) => setStepWidgetConfig(e.target.value)}
-                                        className="font-mono text-xs min-h-[300px]"
-                                        placeholder='{&#10;  "title": "LLM Credentials",&#10;  "fields": [&#10;    { "key": "openai_api_key", "label": "OpenAI API Key", "type": "password", "required": true }&#10;  ]&#10;}'
-                                    />
+                                    {stepWidgetType === '' && (
+                                        <div className="py-12 text-center border-2 border-dashed rounded-xl text-muted-foreground bg-muted/20">
+                                            No interactive widget selected for this step.
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>

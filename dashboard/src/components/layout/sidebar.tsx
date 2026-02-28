@@ -14,6 +14,8 @@ import {
     Building,
     Check,
     ChevronsUpDown,
+    MessageSquareText,
+    ClipboardList,
 } from 'lucide-react'
 import {
     Popover,
@@ -83,11 +85,12 @@ export default function Sidebar({
 
     const navLinks = [
         { href: `/dashboard${contextParam}`, icon: Home, label: 'Overview' },
-        // Super Admin: show Agencies + Sub-Accounts
+        // Super Admin: show Agencies + Sub-Accounts + Manage Checklists
         ...(isSuperAdminView && isPlatformAdmin
             ? [
                 { href: '/dashboard/agencies', icon: Building2, label: 'Agencies' },
                 { href: '/dashboard/sub-accounts', icon: Users2, label: 'Sub-Accounts' },
+                { href: '/dashboard/admin/checklists', icon: ClipboardList, label: 'Manage Checklists' },
             ]
             : []),
         // Agency View: show Sub-Accounts for this agency
@@ -96,9 +99,10 @@ export default function Sidebar({
                 { href: `/dashboard/sub-accounts${agencyParam}`, icon: Users2, label: 'Sub-Accounts' },
             ]
             : []),
-        // Sub-Account View: show AI Settings + Call Logs
+        // Sub-Account View: show Text AI Rep + AI Settings + Call Logs
         ...(isSubAccountView
             ? [
+                { href: `/dashboard/${activeSubId}/text-ai/config`, icon: MessageSquareText, label: 'Text AI Rep' },
                 { href: `/dashboard/${activeSubId}/settings`, icon: Settings, label: 'AI Settings' },
                 { href: `/dashboard/${activeSubId}/logs`, icon: PhoneCall, label: 'Call Logs' },
             ]

@@ -31,6 +31,8 @@ type Step = {
     title: string
     description: string | null
     sort_order: number
+    widget_type: 'credentials' | 'prompt' | null
+    widget_title: string | null
     widget_config?: any
     multi_step_config?: any
     quiz_config?: any
@@ -76,6 +78,8 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
     const [stepWidgetConfig, setStepWidgetConfig] = useState('')
     const [multiStepConfig, setMultiStepConfig] = useState<any>({ slides: [] })
     const [quizConfig, setQuizConfig] = useState<any>({ title: '', threshold: 100, questions: [] })
+    const [stepWidgetType, setStepWidgetType] = useState<'credentials' | 'prompt' | ''>('')
+    const [stepWidgetTitle, setStepWidgetTitle] = useState('')
     const [activeTab, setActiveTab] = useState<'content' | 'substeps' | 'quiz' | 'widget'>('content')
 
     // Delete confirmation
@@ -211,6 +215,8 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
             const updates = {
                 title,
                 description: stepDescription,
+                widget_type: stepWidgetType || null,
+                widget_title: stepWidgetTitle || null,
                 widget_config: parsedWidgetConfig,
                 multi_step_config: multiStepConfig,
                 quiz_config: quizConfig
@@ -219,7 +225,14 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
                 const res = await updateStep(editingStep.id, updates)
                 res.success ? toast.success('Step updated') : toast.error(res.error || 'Failed')
             } else {
-                const res = await createStep(stepSectionId, title, stepDescription, parsedWidgetConfig)
+                const res = await createStep(
+                    stepSectionId,
+                    title,
+                    stepDescription,
+                    stepWidgetType || null,
+                    stepWidgetTitle || null,
+                    parsedWidgetConfig
+                )
                 // Note: createStep might need updating to handle all configs if we want them at creation
                 res.success ? toast.success('Step created') : toast.error(res.error || 'Failed')
             }
@@ -227,6 +240,8 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
             setEditingStep(null)
             setStepDescription('')
             setStepWidgetConfig('')
+            setStepWidgetType('')
+            setStepWidgetTitle('')
             setMultiStepConfig({ slides: [] })
             setQuizConfig({ title: '', threshold: 100, questions: [] })
             router.refresh()
@@ -238,6 +253,8 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
         setStepSectionId(sectionId)
         setStepDescription('')
         setStepWidgetConfig('')
+        setStepWidgetType('')
+        setStepWidgetTitle('')
         setStepDialogOpen(true)
     }
 
@@ -246,6 +263,8 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
         setStepSectionId(sectionId)
         setStepDescription(step.description || '')
         setStepWidgetConfig(step.widget_config ? JSON.stringify(step.widget_config, null, 2) : '')
+        setStepWidgetType(step.widget_type || '')
+        setStepWidgetTitle(step.widget_title || '')
         setMultiStepConfig(step.multi_step_config || { slides: [] })
         setQuizConfig(step.quiz_config || { title: '', threshold: 100, questions: [] })
         setActiveTab('content')
@@ -515,6 +534,29 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
                                             value={stepDescription}
                                             onChange={setStepDescription}
                                         />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4 pt-4 border-t mt-4">
+                                        <div className="space-y-2">
+                                            <Label>Widget Type</Label>
+                                            <select
+                                                className="w-full h-10 px-3 py-2 rounded-md border border-input bg-background text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                                value={stepWidgetType}
+                                                onChange={(e) => setStepWidgetType(e.target.value as any)}
+                                            >
+                                                <option value="">No Widget</option>
+                                                <option value="credentials">Credentials Form</option>
+                                                <option value="prompt">Prompt Editor</option>
+                                            </select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Widget Title</Label>
+                                            <Input
+                                                placeholder="e.g. OpenAI API Key"
+                                                value={stepWidgetTitle}
+                                                onChange={(e) => setStepWidgetTitle(e.target.value)}
+                                            />
+                                        </div>
                                     </div>
                                 </>
                             )}

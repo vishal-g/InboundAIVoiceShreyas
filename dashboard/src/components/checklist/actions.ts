@@ -234,6 +234,8 @@ export async function createStep(
     sectionId: string,
     title: string,
     description: string,
+    widgetType: 'credentials' | 'prompt' | null = null,
+    widgetTitle: string | null = null,
     widgetConfig: WidgetConfig | null = null,
     multiStepConfig: MultiStepConfig | null = null,
     quizConfig: QuizConfig | null = null
@@ -255,6 +257,8 @@ export async function createStep(
             section_id: sectionId,
             title,
             description,
+            widget_type: widgetType,
+            widget_title: widgetTitle,
             widget_config: widgetConfig,
             multi_step_config: multiStepConfig,
             quiz_config: quizConfig,

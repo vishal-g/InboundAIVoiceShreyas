@@ -33,6 +33,29 @@ export type WidgetConfig = {
     fields: WidgetField[]
 }
 
+export type MultiStepSlide = {
+    title: string
+    content: string
+    video_url?: string
+}
+
+export type MultiStepConfig = {
+    slides: MultiStepSlide[]
+}
+
+export type QuizQuestion = {
+    id: string
+    text: string
+    options: string[]
+    correct_index: number
+}
+
+export type QuizConfig = {
+    title: string
+    threshold: number
+    questions: QuizQuestion[]
+}
+
 export type ChecklistStep = {
     id: string
     section_id: string
@@ -40,6 +63,8 @@ export type ChecklistStep = {
     description: string | null
     sort_order: number
     widget_config: WidgetConfig | null
+    multi_step_config: MultiStepConfig | null
+    quiz_config: QuizConfig | null
     created_at: string
     updated_at: string
 }

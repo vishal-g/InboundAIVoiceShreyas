@@ -7,6 +7,8 @@ import { CheckCircle2, Circle, ChevronDown, ChevronRight, ArrowLeft } from 'luci
 import { toggleStepCompletion } from './actions'
 import type { SectionWithProgress } from './types'
 import { DynamicStepsWidget } from './widgets/dynamic-steps-widget'
+import { MultiStepProgress } from './multi-step-progress'
+import { QuizWidget } from './quiz-widget'
 
 type Props = {
     open: boolean
@@ -43,6 +45,11 @@ export default function ChecklistGuideModal({
         return map
     })
 
+    // Sub-step and Quiz state
+    const [currentSlideIndex, setCurrentSlideIndex] = useState(0)
+    const [quizPassed, setQuizPassed] = useState(false)
+    const [showQuiz, setShowQuiz] = useState(false)
+
     const prevOpenRef = React.useRef(open)
 
     // Sync state only when modal goes from closed -> open
@@ -50,11 +57,19 @@ export default function ChecklistGuideModal({
         if (open && !prevOpenRef.current) {
             setActiveSectionId(initialSectionId)
             const section = sections.find(s => s.id === initialSectionId)
-            setActiveStepId(section?.steps?.[0]?.id || null)
+            const firstStep = section?.steps?.[0]?.id || null
+            setActiveStepId(firstStep)
             setExpandedSections(new Set([initialSectionId]))
         }
         prevOpenRef.current = open
     }, [open, initialSectionId, sections])
+
+    // Reset sub-state when step changes
+    useEffect(() => {
+        setCurrentSlideIndex(0)
+        setQuizPassed(false)
+        setShowQuiz(false)
+    }, [activeStepId])
 
     const activeSection = sections.find(s => s.id === activeSectionId)
     const activeStep = activeSection?.steps.find(s => s.id === activeStepId)
@@ -96,6 +111,20 @@ export default function ChecklistGuideModal({
 
     const navigateToNextStep = () => {
         if (!activeSection || !activeStep) return
+
+        // 1. Handle Slides
+        const slides = activeStep.multi_step_config?.slides || []
+        if (currentSlideIndex < slides.length - 1) {
+            setCurrentSlideIndex(prev => prev + 1)
+            return
+        }
+
+        // 2. Handle Quiz trigger
+        if (activeStep.quiz_config && !showQuiz) {
+            setShowQuiz(true)
+            return
+        }
+
         const currentIdx = activeSection.steps.findIndex(s => s.id === activeStepId)
         if (currentIdx < activeSection.steps.length - 1) {
             // Next step in same section
@@ -114,6 +143,17 @@ export default function ChecklistGuideModal({
 
     const navigateToPrevStep = () => {
         if (!activeSection || !activeStep) return
+
+        if (showQuiz) {
+            setShowQuiz(false)
+            return
+        }
+
+        if (currentSlideIndex > 0) {
+            setCurrentSlideIndex(prev => prev - 1)
+            return
+        }
+
         const currentIdx = activeSection.steps.findIndex(s => s.id === activeStepId)
         if (currentIdx > 0) {
             setActiveStepId(activeSection.steps[currentIdx - 1].id)
@@ -198,17 +238,44 @@ export default function ChecklistGuideModal({
                                     <h3 className="text-2xl font-bold tracking-wide mb-6 text-foreground">
                                         {activeStep.title}
                                     </h3>
-                                    <div className="prose prose-base whitespace-pre-line max-w-none text-muted-foreground leading-relaxed prose-p:leading-relaxed prose-a:text-primary prose-a:underline prose-ul:list-disc prose-ol:list-decimal prose-ul:ml-4 prose-ol:ml-4">
-                                        {activeStep.description ? (
-                                            <div dangerouslySetInnerHTML={{ __html: activeStep.description }} />
-                                        ) : (
-                                            <p className="text-muted-foreground/60 italic">
-                                                No description provided for this step yet.
-                                            </p>
-                                        )}
-                                    </div>
 
-                                    {activeStep.widget_config && (
+                                    {activeStep.multi_step_config?.slides && (
+                                        <MultiStepProgress
+                                            total={activeStep.multi_step_config.slides.length + (activeStep.quiz_config ? 1 : 0)}
+                                            current={showQuiz ? activeStep.multi_step_config.slides.length : currentSlideIndex}
+                                            onSelect={(i) => {
+                                                if (i < activeStep.multi_step_config!.slides.length) {
+                                                    setCurrentSlideIndex(i)
+                                                    setShowQuiz(false)
+                                                } else {
+                                                    setShowQuiz(true)
+                                                }
+                                            }}
+                                        />
+                                    )}
+
+                                    {!showQuiz ? (
+                                        <div className="prose prose-base whitespace-pre-line max-w-none text-muted-foreground leading-relaxed prose-p:leading-relaxed prose-a:text-primary prose-a:underline prose-ul:list-disc prose-ol:list-decimal prose-ul:ml-4 prose-ol:ml-4">
+                                            {activeStep.multi_step_config?.slides ? (
+                                                <div dangerouslySetInnerHTML={{ __html: activeStep.multi_step_config.slides[currentSlideIndex].content }} />
+                                            ) : activeStep.description ? (
+                                                <div dangerouslySetInnerHTML={{ __html: activeStep.description }} />
+                                            ) : (
+                                                <p className="text-muted-foreground/60 italic">
+                                                    No description provided for this step yet.
+                                                </p>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        activeStep.quiz_config && (
+                                            <QuizWidget
+                                                config={activeStep.quiz_config}
+                                                onComplete={setQuizPassed}
+                                            />
+                                        )
+                                    )}
+
+                                    {activeStep.widget_config && !showQuiz && (
                                         <div className="mt-8 border-t pt-2">
                                             <DynamicStepsWidget
                                                 subAccountId={subAccountId}
@@ -237,10 +304,13 @@ export default function ChecklistGuideModal({
                                 Back
                             </Button>
                             <div className="flex items-center gap-3">
+                                {!isStepDone && activeStep?.quiz_config && !quizPassed && (
+                                    <span className="text-xs text-muted-foreground mr-2 italic">Pass quiz to continue</span>
+                                )}
                                 <Button
                                     size="sm"
                                     onClick={handleToggleDone}
-                                    disabled={!activeStepId || isPending}
+                                    disabled={!activeStepId || isPending || (activeStep?.quiz_config && !quizPassed && !isStepDone)}
                                     className={`gap-2 min-w-[120px] text-white border-0 ${isStepDone
                                         ? 'bg-slate-500 hover:bg-slate-600'
                                         : 'bg-violet-500 hover:bg-violet-600'

@@ -22,6 +22,8 @@ import {
     reorderSteps,
 } from '@/components/checklist/actions'
 import { toast } from 'sonner'
+import { SubStepEditor } from '@/components/checklist/admin/SubStepEditor'
+import { QuizEditor } from '@/components/checklist/admin/QuizEditor'
 
 type Step = {
     id: string
@@ -30,6 +32,8 @@ type Step = {
     description: string | null
     sort_order: number
     widget_config?: any
+    multi_step_config?: any
+    quiz_config?: any
 }
 
 type Section = {
@@ -70,6 +74,9 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
     const [stepSectionId, setStepSectionId] = useState<string>('')
     const [stepDescription, setStepDescription] = useState('')
     const [stepWidgetConfig, setStepWidgetConfig] = useState('')
+    const [multiStepConfig, setMultiStepConfig] = useState<any>({ slides: [] })
+    const [quizConfig, setQuizConfig] = useState<any>({ title: '', threshold: 100, questions: [] })
+    const [activeTab, setActiveTab] = useState<'content' | 'substeps' | 'quiz' | 'widget'>('content')
 
     // Delete confirmation
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -201,17 +208,27 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
         }
 
         startTransition(async () => {
+            const updates = {
+                title,
+                description: stepDescription,
+                widget_config: parsedWidgetConfig,
+                multi_step_config: multiStepConfig,
+                quiz_config: quizConfig
+            }
             if (editingStep) {
-                const res = await updateStep(editingStep.id, { title, description: stepDescription, widget_config: parsedWidgetConfig })
+                const res = await updateStep(editingStep.id, updates)
                 res.success ? toast.success('Step updated') : toast.error(res.error || 'Failed')
             } else {
                 const res = await createStep(stepSectionId, title, stepDescription, parsedWidgetConfig)
+                // Note: createStep might need updating to handle all configs if we want them at creation
                 res.success ? toast.success('Step created') : toast.error(res.error || 'Failed')
             }
             setStepDialogOpen(false)
             setEditingStep(null)
             setStepDescription('')
             setStepWidgetConfig('')
+            setMultiStepConfig({ slides: [] })
+            setQuizConfig({ title: '', threshold: 100, questions: [] })
             router.refresh()
         })
     }
@@ -229,6 +246,9 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
         setStepSectionId(sectionId)
         setStepDescription(step.description || '')
         setStepWidgetConfig(step.widget_config ? JSON.stringify(step.widget_config, null, 2) : '')
+        setMultiStepConfig(step.multi_step_config || { slides: [] })
+        setQuizConfig(step.quiz_config || { title: '', threshold: 100, questions: [] })
+        setActiveTab('content')
         setStepDialogOpen(true)
     }
 
@@ -461,31 +481,72 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
                         <DialogTitle>{editingStep ? 'Edit Step' : 'Add Step'}</DialogTitle>
                     </DialogHeader>
                     <form onSubmit={handleSaveStep} className="flex flex-col flex-1 min-h-0">
-                        <div className="space-y-4 py-4 flex-1 overflow-y-auto">
-                            <div className="space-y-2">
-                                <Label>Title</Label>
-                                <Input name="title" defaultValue={editingStep?.title || ''} required />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Description / Instructions</Label>
-                                <RichTextEditor
-                                    value={stepDescription}
-                                    onChange={setStepDescription}
+                        <div className="flex items-center gap-1 p-1 bg-muted rounded-lg mb-6 self-start">
+                            {[
+                                { id: 'content', label: 'Basic Content' },
+                                { id: 'substeps', label: 'Sub-steps' },
+                                { id: 'quiz', label: 'Confirmation Quiz' },
+                                { id: 'widget', label: 'Dynamic Form (JSON)' },
+                            ].map((tab) => (
+                                <button
+                                    key={tab.id}
+                                    type="button"
+                                    onClick={() => setActiveTab(tab.id as any)}
+                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${activeTab === tab.id
+                                        ? 'bg-background shadow-sm text-foreground'
+                                        : 'text-muted-foreground hover:text-foreground'
+                                        }`}
+                                >
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="space-y-4 flex-1 overflow-y-auto px-1">
+                            {activeTab === 'content' && (
+                                <>
+                                    <div className="space-y-2">
+                                        <Label>Title</Label>
+                                        <Input name="title" defaultValue={editingStep?.title || ''} required />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Description / Instructions</Label>
+                                        <RichTextEditor
+                                            value={stepDescription}
+                                            onChange={setStepDescription}
+                                        />
+                                    </div>
+                                </>
+                            )}
+
+                            {activeTab === 'substeps' && (
+                                <SubStepEditor
+                                    config={multiStepConfig}
+                                    onChange={setMultiStepConfig}
                                 />
-                            </div>
-                            <div className="space-y-2 pt-2">
-                                <Label>Widget Configuration (JSON)</Label>
-                                <p className="text-[11px] text-muted-foreground leading-tight mb-1">
-                                    Optionally attach an interactive credential form. Must be valid JSON like: <br />
-                                    <code>{`{"title": "API Keys", "fields": [{"key": "openai_key", "label": "OpenAI Key", "type": "password"}]}`}</code>
-                                </p>
-                                <Textarea
-                                    value={stepWidgetConfig}
-                                    onChange={(e) => setStepWidgetConfig(e.target.value)}
-                                    className="font-mono text-xs min-h-[120px]"
-                                    placeholder='{&#10;  "title": "LLM Credentials",&#10;  "fields": [&#10;    { "key": "openai_api_key", "label": "OpenAI API Key", "type": "password", "required": true }&#10;  ]&#10;}'
+                            )}
+
+                            {activeTab === 'quiz' && (
+                                <QuizEditor
+                                    config={quizConfig}
+                                    onChange={setQuizConfig}
                                 />
-                            </div>
+                            )}
+
+                            {activeTab === 'widget' && (
+                                <div className="space-y-2 pt-2">
+                                    <Label>Widget Configuration (JSON)</Label>
+                                    <p className="text-[11px] text-muted-foreground leading-tight mb-1">
+                                        Optionally attach an interactive credential form. Must be valid JSON.
+                                    </p>
+                                    <Textarea
+                                        value={stepWidgetConfig}
+                                        onChange={(e) => setStepWidgetConfig(e.target.value)}
+                                        className="font-mono text-xs min-h-[300px]"
+                                        placeholder='{&#10;  "title": "LLM Credentials",&#10;  "fields": [&#10;    { "key": "openai_api_key", "label": "OpenAI API Key", "type": "password", "required": true }&#10;  ]&#10;}'
+                                    />
+                                </div>
+                            )}
                         </div>
                         <DialogFooter className="pt-4 mt-auto">
                             <Button type="button" variant="outline" onClick={() => setStepDialogOpen(false)}>Cancel</Button>

@@ -218,7 +218,14 @@ export async function deleteSection(sectionId: string) {
 }
 
 // Steps CRUD
-export async function createStep(sectionId: string, title: string, description: string, widgetConfig: any = null) {
+export async function createStep(
+    sectionId: string,
+    title: string,
+    description: string,
+    widgetConfig: any = null,
+    multiStepConfig: any = null,
+    quizConfig: any = null
+) {
     const admin = await requirePlatformAdmin()
 
     const { data: existing } = await admin
@@ -232,7 +239,15 @@ export async function createStep(sectionId: string, title: string, description: 
 
     const { data, error } = await admin
         .from('checklist_steps')
-        .insert({ section_id: sectionId, title, description, widget_config: widgetConfig, sort_order: nextOrder })
+        .insert({
+            section_id: sectionId,
+            title,
+            description,
+            widget_config: widgetConfig,
+            multi_step_config: multiStepConfig,
+            quiz_config: quizConfig,
+            sort_order: nextOrder
+        })
         .select()
         .single()
 

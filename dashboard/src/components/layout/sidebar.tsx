@@ -12,15 +12,25 @@ import {
     LogOut,
     Zap,
     Building,
+    Check,
+    ChevronsUpDown,
 } from 'lucide-react'
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectSeparator,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select'
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover'
+import {
+    Command,
+    CommandEmpty,
+    CommandGroup,
+    CommandInput,
+    CommandItem,
+    CommandList,
+    CommandSeparator,
+} from '@/components/ui/command'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 type Agency = { id: string; name: string }
 type SubAccount = { id: string; name: string; agency_id: string }
@@ -49,6 +59,8 @@ export default function Sidebar({
 
     const [selectedAgencyId, setSelectedAgencyId] = useState(agencyId || agencies[0]?.id || '')
     const [selectedSubAccountId, setSelectedSubAccountId] = useState(subAccountId || '')
+    const [agencyOpen, setAgencyOpen] = useState(false)
+    const [subAccountOpen, setSubAccountOpen] = useState(false)
 
     // Filter sub-accounts by selected agency
     const filteredSubAccounts = isPlatformAdmin
@@ -70,26 +82,8 @@ export default function Sidebar({
         { href: `/dashboard/${activeSubId}/logs`, icon: PhoneCall, label: 'Call Logs' },
     ]
 
-    function handleAgencyChange(value: string) {
-        if (value === '__super_admin__') {
-            setSelectedAgencyId('')
-            setSelectedSubAccountId('')
-            router.push('/dashboard')
-        } else {
-            setSelectedAgencyId(value)
-            setSelectedSubAccountId('')
-        }
-    }
-
-    function handleSubAccountChange(value: string) {
-        if (value === '__agency_view__') {
-            setSelectedSubAccountId('')
-            router.push('/dashboard')
-        } else {
-            setSelectedSubAccountId(value)
-            router.push(`/dashboard/${value}/settings`)
-        }
-    }
+    const selectedAgencyName = agencies.find((a) => a.id === selectedAgencyId)?.name
+    const selectedSubAccountName = filteredSubAccounts.find((sa) => sa.id === selectedSubAccountId)?.name
 
     async function handleSignOut() {
         const { createClient } = await import('@/utils/supabase/client')
@@ -112,66 +106,133 @@ export default function Sidebar({
 
             {/* Context Switchers */}
             <div className="border-b px-3 py-3 space-y-3">
-                {/* Agency Dropdown — visible to platform_admin */}
+                {/* Agency Combobox — visible to platform_admin */}
                 {isPlatformAdmin && agencies.length > 0 && (
                     <div className="space-y-1">
                         <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Agency</label>
-                        <Select value={selectedAgencyId || '__super_admin__'} onValueChange={handleAgencyChange}>
-                            <SelectTrigger size="sm" className="w-full text-xs">
-                                <SelectValue placeholder="Select agency…" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="__super_admin__">
-                                    <span className="flex items-center gap-1.5">
-                                        <Zap className="h-3 w-3 text-amber-500" />
-                                        Super Admin View
+                        <Popover open={agencyOpen} onOpenChange={setAgencyOpen}>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={agencyOpen}
+                                    className="w-full justify-between text-xs h-8 px-2 font-normal"
+                                >
+                                    <span className="truncate">
+                                        {selectedAgencyId ? (selectedAgencyName || 'Select…') : '⚡ Super Admin View'}
                                     </span>
-                                </SelectItem>
-                                <SelectSeparator />
-                                {agencies.map((a) => (
-                                    <SelectItem key={a.id} value={a.id}>
-                                        <span className="flex items-center gap-1.5">
-                                            <Building className="h-3 w-3 text-muted-foreground" />
-                                            {a.name}
-                                        </span>
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                                    <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[200px] p-0" align="start" sideOffset={4}>
+                                <Command>
+                                    <CommandInput placeholder="Search agency…" className="h-8 text-xs" />
+                                    <CommandList>
+                                        <CommandEmpty>No agency found.</CommandEmpty>
+                                        <CommandGroup>
+                                            <CommandItem
+                                                value="super-admin-view"
+                                                onSelect={() => {
+                                                    setSelectedAgencyId('')
+                                                    setSelectedSubAccountId('')
+                                                    setAgencyOpen(false)
+                                                    router.push('/dashboard')
+                                                }}
+                                            >
+                                                <Zap className={cn("mr-2 h-3 w-3 text-amber-500")} />
+                                                <span className="text-xs">Super Admin View</span>
+                                                <Check className={cn("ml-auto h-3 w-3", !selectedAgencyId ? "opacity-100" : "opacity-0")} />
+                                            </CommandItem>
+                                        </CommandGroup>
+                                        <CommandSeparator />
+                                        <CommandGroup heading="Agencies">
+                                            {agencies.map((a) => (
+                                                <CommandItem
+                                                    key={a.id}
+                                                    value={a.name}
+                                                    onSelect={() => {
+                                                        setSelectedAgencyId(a.id)
+                                                        setSelectedSubAccountId('')
+                                                        setAgencyOpen(false)
+                                                    }}
+                                                >
+                                                    <Building className={cn("mr-2 h-3 w-3 text-muted-foreground")} />
+                                                    <span className="text-xs">{a.name}</span>
+                                                    <Check className={cn("ml-auto h-3 w-3", selectedAgencyId === a.id ? "opacity-100" : "opacity-0")} />
+                                                </CommandItem>
+                                            ))}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
                     </div>
                 )}
 
-                {/* Sub-Account Dropdown — visible to platform_admin and agency_admin */}
+                {/* Sub-Account Combobox — visible to platform_admin and agency_admin */}
                 {(isPlatformAdmin || isAgencyAdmin) && (
                     <div className="space-y-1">
                         <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Sub-Account</label>
-                        <Select value={selectedSubAccountId || '__agency_view__'} onValueChange={handleSubAccountChange}>
-                            <SelectTrigger size="sm" className="w-full text-xs">
-                                <SelectValue placeholder="Select sub-account…" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="__agency_view__">
-                                    <span className="flex items-center gap-1.5">
-                                        <Building2 className="h-3 w-3 text-blue-500" />
-                                        Agency View
+                        <Popover open={subAccountOpen} onOpenChange={setSubAccountOpen}>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    role="combobox"
+                                    aria-expanded={subAccountOpen}
+                                    className="w-full justify-between text-xs h-8 px-2 font-normal"
+                                >
+                                    <span className="truncate">
+                                        {selectedSubAccountId ? (selectedSubAccountName || 'Select…') : '🏢 Agency View'}
                                     </span>
-                                </SelectItem>
-                                <SelectSeparator />
-                                {filteredSubAccounts.map((sa) => (
-                                    <SelectItem key={sa.id} value={sa.id}>
-                                        <span className="flex items-center gap-1.5">
-                                            <Users2 className="h-3 w-3 text-muted-foreground" />
-                                            {sa.name}
-                                        </span>
-                                    </SelectItem>
-                                ))}
-                                {filteredSubAccounts.length === 0 && (
-                                    <div className="px-2 py-1.5 text-xs text-muted-foreground italic">
-                                        No sub-accounts for this agency
-                                    </div>
-                                )}
-                            </SelectContent>
-                        </Select>
+                                    <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-[200px] p-0" align="start" sideOffset={4}>
+                                <Command>
+                                    <CommandInput placeholder="Search sub-account…" className="h-8 text-xs" />
+                                    <CommandList>
+                                        <CommandEmpty>No sub-account found.</CommandEmpty>
+                                        <CommandGroup>
+                                            <CommandItem
+                                                value="agency-view"
+                                                onSelect={() => {
+                                                    setSelectedSubAccountId('')
+                                                    setSubAccountOpen(false)
+                                                    router.push('/dashboard')
+                                                }}
+                                            >
+                                                <Building2 className={cn("mr-2 h-3 w-3 text-blue-500")} />
+                                                <span className="text-xs">Agency View</span>
+                                                <Check className={cn("ml-auto h-3 w-3", !selectedSubAccountId ? "opacity-100" : "opacity-0")} />
+                                            </CommandItem>
+                                        </CommandGroup>
+                                        <CommandSeparator />
+                                        <CommandGroup heading="Sub-Accounts">
+                                            {filteredSubAccounts.map((sa) => (
+                                                <CommandItem
+                                                    key={sa.id}
+                                                    value={sa.name}
+                                                    onSelect={() => {
+                                                        setSelectedSubAccountId(sa.id)
+                                                        setSubAccountOpen(false)
+                                                        router.push(`/dashboard/${sa.id}/settings`)
+                                                    }}
+                                                >
+                                                    <Users2 className={cn("mr-2 h-3 w-3 text-muted-foreground")} />
+                                                    <span className="text-xs">{sa.name}</span>
+                                                    <Check className={cn("ml-auto h-3 w-3", selectedSubAccountId === sa.id ? "opacity-100" : "opacity-0")} />
+                                                </CommandItem>
+                                            ))}
+                                            {filteredSubAccounts.length === 0 && (
+                                                <div className="px-2 py-1.5 text-xs text-muted-foreground italic">
+                                                    No sub-accounts
+                                                </div>
+                                            )}
+                                        </CommandGroup>
+                                    </CommandList>
+                                </Command>
+                            </PopoverContent>
+                        </Popover>
                     </div>
                 )}
             </div>

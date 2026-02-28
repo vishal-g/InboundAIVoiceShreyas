@@ -165,4 +165,43 @@
   .callout[data-type="error"] {
     @apply bg-red-50 border-red-200 text-red-900;
   }
+
+  /* Tiptap List Resets (Override Tailwind Preflight) */
+  .tiptap-editor-wrapper .tiptap ul {
+    list-style-type: disc;
+    padding-left: 1.5rem;
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .tiptap-editor-wrapper .tiptap ol {
+    list-style-type: decimal;
+    padding-left: 1.5rem;
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .tiptap-editor-wrapper .tiptap h1 {
+    font-size: 1.875rem;
+    font-weight: 700;
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    line-height: 1.2;
+  }
+
+  .tiptap-editor-wrapper .tiptap h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-top: 1.25rem;
+    margin-bottom: 0.5rem;
+    line-height: 1.3;
+  }
+
+  .tiptap-editor-wrapper .tiptap h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+  }
 }

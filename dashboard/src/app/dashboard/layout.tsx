@@ -40,6 +40,13 @@ export default async function DashboardLayout({
         .select('id, name, agency_id')
         .order('name')
 
+    // Fetch dynamic navigation items
+    const { data: navItems } = await admin
+        .from('navigation_items')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true })
+
     return (
         <div className="flex min-h-screen w-full flex-col bg-muted/40">
             <Sidebar
@@ -49,6 +56,7 @@ export default async function DashboardLayout({
                 agencies={agencies || []}
                 subAccounts={subAccounts || []}
                 userEmail={user.email}
+                navItems={(navItems || []) as any}
             />
             <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-56">
                 <Header userEmail={user.email} />

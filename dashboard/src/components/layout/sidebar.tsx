@@ -16,7 +16,9 @@ import {
     ChevronsUpDown,
     MessageSquareText,
     ClipboardList,
+    Layout,
 } from 'lucide-react'
+import * as LucideIcons from 'lucide-react'
 import {
     Popover,
     PopoverContent,
@@ -44,6 +46,20 @@ interface SidebarProps {
     agencies: Agency[]
     subAccounts: SubAccount[]
     userEmail?: string
+    navItems: any[]
+}
+
+const ICON_MAP: Record<string, any> = {
+    Home,
+    Building2,
+    Settings,
+    Users2,
+    PhoneCall,
+    Zap,
+    Building,
+    ClipboardList,
+    MessageSquareText,
+    Layout
 }
 
 export default function Sidebar({
@@ -53,6 +69,7 @@ export default function Sidebar({
     agencies,
     subAccounts,
     userEmail,
+    navItems,
 }: SidebarProps) {
     const pathname = usePathname()
     const router = useRouter()
@@ -83,23 +100,61 @@ export default function Sidebar({
         : selectedAgencyId ? `?agency_id=${selectedAgencyId}` : ''
     const agencyParam = selectedAgencyId ? `?agency_id=${selectedAgencyId}` : ''
 
-    const navLinks = [
+    const selectedAgencyName = agencies.find((a) => a.id === selectedAgencyId)?.name
+    const selectedSubAccountName = filteredSubAccounts.find((sa) => sa.id === selectedSubAccountId)?.name
+
+    // Filter and map dynamic nav links
+    const dynamicNavLinks = navItems
+        .filter((item: any) => {
+            // Role check
+            if (item.required_role !== 'all' && userRole !== item.required_role) {
+                // Special case: platform_admin/agency_admin can see lower roles
+                if (item.required_role === 'agency_admin' && userRole === 'sub_account_user') return false
+                if (item.required_role === 'platform_admin' && userRole !== 'platform_admin') return false
+            }
+
+            // View mode check
+            if (item.view_mode === 'super_admin' && !isSuperAdminView) return false
+            if (item.view_mode === 'agency' && !isAgencyView) return false
+            if (item.view_mode === 'sub_account' && !isSubAccountView) return false
+
+            return true
+        })
+        .map((item: any) => {
+            let processedHref = item.href
+            if (activeSubId) {
+                processedHref = processedHref.replace('{subAccountId}', activeSubId)
+            }
+            // Add context params if they aren't already there
+            if (!processedHref.includes('?')) {
+                processedHref += contextParam
+            }
+
+            const IconComp = ICON_MAP[item.icon] || (LucideIcons as any)[item.icon] || Home
+
+            return {
+                href: processedHref,
+                icon: IconComp,
+                label: item.label
+            }
+        })
+
+    const navLinks = dynamicNavLinks.length > 0 ? dynamicNavLinks : [
         { href: `/dashboard${contextParam}`, icon: Home, label: 'Overview' },
-        // Super Admin: show Agencies + Sub-Accounts + Manage Checklists
+        // Fallback to legacy if no dynamic items exist (prevent empty sidebar during first setup)
         ...(isSuperAdminView && isPlatformAdmin
             ? [
                 { href: '/dashboard/agencies', icon: Building2, label: 'Agencies' },
                 { href: '/dashboard/sub-accounts', icon: Users2, label: 'Sub-Accounts' },
                 { href: '/dashboard/admin/checklists', icon: ClipboardList, label: 'Manage Checklists' },
+                { href: '/dashboard/admin/navigation', icon: Layout, label: 'Manage Menu' },
             ]
             : []),
-        // Agency View: show Sub-Accounts for this agency
         ...(isAgencyView && (isPlatformAdmin || isAgencyAdmin)
             ? [
                 { href: `/dashboard/sub-accounts${agencyParam}`, icon: Users2, label: 'Sub-Accounts' },
             ]
             : []),
-        // Sub-Account View: show Text AI Rep + AI Settings + Call Logs
         ...(isSubAccountView
             ? [
                 { href: `/dashboard/${activeSubId}/text-ai/config`, icon: MessageSquareText, label: 'Text AI Rep' },
@@ -108,9 +163,6 @@ export default function Sidebar({
             ]
             : []),
     ]
-
-    const selectedAgencyName = agencies.find((a) => a.id === selectedAgencyId)?.name
-    const selectedSubAccountName = filteredSubAccounts.find((sa) => sa.id === selectedSubAccountId)?.name
 
     async function handleSignOut() {
         const { createClient } = await import('@/utils/supabase/client')
@@ -268,7 +320,7 @@ export default function Sidebar({
             {/* Navigation */}
             <nav className="flex-1 overflow-y-auto px-3 py-3">
                 <div className="space-y-1">
-                    {navLinks.map((link) => {
+                    {navLinks.map((link: any) => {
                         const isActive =
                             pathname === link.href ||
                             (link.href !== '/dashboard' && pathname.startsWith(link.href))

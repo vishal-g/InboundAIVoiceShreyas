@@ -28,13 +28,45 @@ export default async function DashboardOverview({
 
     const isPlatformAdmin = roleData?.role === 'platform_admin'
     const isAgencyAdmin = roleData?.role === 'agency_admin'
+    const userAgencyId = roleData?.agency_id
     const userSubAccountId = roleData?.sub_account_id
 
     // Determine effective view mode
-    const effectiveSubAccountId = subAccountIdFilter || userSubAccountId
-    const isSubAccountView = !!subAccountIdFilter || !!userSubAccountId
-    const isAgencyView = !!agencyIdFilter && !subAccountIdFilter
-    const isSuperAdminView = isPlatformAdmin && !agencyIdFilter && !subAccountIdFilter
+    // 1. If explicit sub_account_id param, use it
+    // 2. If user is fixed to a sub_account, use that as default
+    let effectiveSubAccountId = subAccountIdFilter || userSubAccountId
+
+    // SECURITY GUARD: Sub-account users can ONLY see their own sub-account
+    if (roleData?.role === 'sub_account_user' && userSubAccountId) {
+        effectiveSubAccountId = userSubAccountId
+    }
+    // SECURITY GUARD: Agency admins can ONLY see sub-accounts belonging to their agency
+    if (roleData?.role === 'agency_admin' && effectiveSubAccountId && userAgencyId) {
+        const { data: saCheck } = await admin.from('sub_accounts').select('agency_id').eq('id', effectiveSubAccountId).single()
+        if (saCheck?.agency_id !== userAgencyId) {
+            effectiveSubAccountId = null // Access denied to this sub-account
+        }
+    }
+    const isSubAccountView = !!effectiveSubAccountId
+
+    // 1. If explicit agency_id param, use it
+    // 2. If user is fixed to an agency (Agency Admin), use that as default
+    // 3. BUT only if not in a sub-account view
+    let effectiveAgencyId = agencyIdFilter || (isAgencyAdmin ? userAgencyId : null)
+
+    // SECURITY GUARD: Agency admins can ONLY see their own agency
+    if (roleData?.role === 'agency_admin' && userAgencyId) {
+        effectiveAgencyId = userAgencyId
+    }
+    // SECURITY GUARD: Sub-account users cannot see agency level
+    if (roleData?.role === 'sub_account_user') {
+        effectiveAgencyId = null
+    }
+
+    const isAgencyView = !!effectiveAgencyId && !isSubAccountView
+
+    // Super Admin view is only for platform_admins when NO agency or sub-account is selected
+    const isSuperAdminView = isPlatformAdmin && !agencyIdFilter && !subAccountIdFilter && !isSubAccountView && !isAgencyView
 
     let totalAgencies = 0
     let totalSubAccounts = 0
@@ -53,15 +85,15 @@ export default async function DashboardOverview({
         totalCalls = callCount || 0
         const { count: bookingCount } = await admin.from('call_logs').select('*', { count: 'exact', head: true }).eq('sub_account_id', effectiveSubAccountId).eq('was_booked', true)
         totalBookings = bookingCount || 0
-    } else if (isAgencyView && agencyIdFilter) {
+    } else if (isAgencyView && effectiveAgencyId) {
         // AGENCY VIEW — show this agency's data
-        const { data: agencyInfo } = await admin.from('agencies').select('name').eq('id', agencyIdFilter).single()
+        const { data: agencyInfo } = await admin.from('agencies').select('name').eq('id', effectiveAgencyId).single()
         viewLabel = agencyInfo ? `Viewing: ${agencyInfo.name}` : 'Agency overview'
 
-        const { count: subAccountCount } = await admin.from('sub_accounts').select('*', { count: 'exact', head: true }).eq('agency_id', agencyIdFilter)
+        const { count: subAccountCount } = await admin.from('sub_accounts').select('*', { count: 'exact', head: true }).eq('agency_id', effectiveAgencyId)
         totalSubAccounts = subAccountCount || 0
 
-        const { data: agencySubAccounts } = await admin.from('sub_accounts').select('id').eq('agency_id', agencyIdFilter)
+        const { data: agencySubAccounts } = await admin.from('sub_accounts').select('id').eq('agency_id', effectiveAgencyId)
         const subIds = agencySubAccounts?.map((sa: any) => sa.id) || []
         if (subIds.length > 0) {
             const { count: callCount } = await admin.from('call_logs').select('*', { count: 'exact', head: true }).in('sub_account_id', subIds)
@@ -86,8 +118,8 @@ export default async function DashboardOverview({
     let recentQuery = admin.from('call_logs').select('*, sub_accounts(name)').order('created_at', { ascending: false }).limit(5)
     if (isSubAccountView && effectiveSubAccountId) {
         recentQuery = recentQuery.eq('sub_account_id', effectiveSubAccountId)
-    } else if (isAgencyView && agencyIdFilter) {
-        const { data: agencySubAccounts } = await admin.from('sub_accounts').select('id').eq('agency_id', agencyIdFilter)
+    } else if (isAgencyView && effectiveAgencyId) {
+        const { data: agencySubAccounts } = await admin.from('sub_accounts').select('id').eq('agency_id', effectiveAgencyId)
         const subIds = agencySubAccounts?.map((sa: any) => sa.id) || []
         if (subIds.length > 0) {
             recentQuery = recentQuery.in('sub_account_id', subIds)
@@ -130,7 +162,7 @@ export default async function DashboardOverview({
                         <CardContent>
                             <div className="text-2xl font-bold">{totalSubAccounts}</div>
                             <p className="text-xs text-muted-foreground">
-                                <Link href={`/dashboard/sub-accounts${agencyIdFilter ? `?agency_id=${agencyIdFilter}` : ''}`} className="hover:underline">Manage sub-accounts →</Link>
+                                <Link href={`/dashboard/sub-accounts${effectiveAgencyId ? `?agency_id=${effectiveAgencyId}` : ''}`} className="hover:underline">Manage sub-accounts →</Link>
                             </p>
                         </CardContent>
                     </Card>
@@ -220,8 +252,8 @@ export default async function DashboardOverview({
                                 </Link>
                             </>
                         )}
-                        {isAgencyView && (
-                            <Link href={`/dashboard/sub-accounts?agency_id=${agencyIdFilter}`} className="block rounded-lg border p-3 hover:bg-accent transition-colors">
+                        {isAgencyView && effectiveAgencyId && (
+                            <Link href={`/dashboard/sub-accounts?agency_id=${effectiveAgencyId}`} className="block rounded-lg border p-3 hover:bg-accent transition-colors">
                                 <div className="font-medium text-sm">Manage Sub-Accounts</div>
                                 <div className="text-xs text-muted-foreground">View sub-accounts for this agency</div>
                             </Link>

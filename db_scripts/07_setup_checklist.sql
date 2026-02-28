@@ -59,6 +59,11 @@ DO $$ BEGIN
         ALTER TABLE checklist_steps ADD COLUMN quiz_config JSONB;
     END IF;
 
+    -- Fix existing rows: Assign a default widget_key if it's missing for prompt types
+    UPDATE checklist_steps 
+    SET widget_key = 'prompt_' || (id::text)
+    WHERE widget_type = 'prompt' AND widget_key IS NULL;
+
     -- Add constraint for mandatory prompt key
     IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE table_name = 'checklist_steps' AND constraint_name = 'prompt_key_required_if_prompt_type') THEN
         ALTER TABLE checklist_steps ADD CONSTRAINT prompt_key_required_if_prompt_type 
@@ -280,20 +285,21 @@ ON CONFLICT (id) DO UPDATE SET
     icon = EXCLUDED.icon,
     sort_order = EXCLUDED.sort_order;
 
-INSERT INTO checklist_steps (id, section_id, title, description, sort_order, widget_type, widget_title) VALUES
-    ('b1000000-0000-0000-0000-000000000028', 'a1000000-0000-0000-0000-000000000005', 'Configure System Prompt (prompt_0)', 'Set the master system prompt that defines the AI personality.', 1, 'prompt', 'System Prompt (prompt_0)'),
-    ('b1000000-0000-0000-0000-000000000029', 'a1000000-0000-0000-0000-000000000005', 'Configure Greeting Prompt (prompt_1)', 'Set the initial greeting message for new conversations.', 2, 'prompt', 'Greeting Prompt (prompt_1)'),
-    ('b1000000-0000-0000-0000-000000000030', 'a1000000-0000-0000-0000-000000000005', 'Configure Follow-up Prompt (prompt_2)', 'Set the follow-up prompt for continuing conversations.', 3, 'prompt', 'Follow-up Prompt (prompt_2)'),
-    ('b1000000-0000-0000-0000-000000000031', 'a1000000-0000-0000-0000-000000000005', 'Configure Booking Prompt (prompt_3)', 'Set the prompt for steering conversations toward booking.', 4, 'prompt', 'Booking Prompt (prompt_3)'),
-    ('b1000000-0000-0000-0000-000000000032', 'a1000000-0000-0000-0000-000000000005', 'Configure Objection Handling (prompt_4)', 'Set the prompt for handling common objections.', 5, 'prompt', 'Objection Handling (prompt_4)'),
-    ('b1000000-0000-0000-0000-000000000033', 'a1000000-0000-0000-0000-000000000005', 'Configure Closing Prompt (prompt_5)', 'Set the closing and recap prompt.', 6, 'prompt', 'Closing Prompt (prompt_5)'),
-    ('b1000000-0000-0000-0000-000000000034', 'a1000000-0000-0000-0000-000000000005', 'Test Prompts with Sample Data', 'Run through a test conversation to verify prompt quality.', 7, NULL, NULL),
-    ('b1000000-0000-0000-0000-000000000035', 'a1000000-0000-0000-0000-000000000005', 'Finalize and Save All Prompts', 'Review all prompts and save the final versions.', 8, NULL, NULL)
+INSERT INTO checklist_steps (id, section_id, title, description, sort_order, widget_type, widget_key, widget_title) VALUES
+    ('b1000000-0000-0000-0000-000000000028', 'a1000000-0000-0000-0000-000000000005', 'Configure System Prompt (prompt_0)', 'Set the master system prompt that defines the AI personality.', 1, 'prompt', 'prompt_0', 'System Prompt (prompt_0)'),
+    ('b1000000-0000-0000-0000-000000000029', 'a1000000-0000-0000-0000-000000000005', 'Configure Greeting Prompt (prompt_1)', 'Set the initial greeting message for new conversations.', 2, 'prompt', 'prompt_1', 'Greeting Prompt (prompt_1)'),
+    ('b1000000-0000-0000-0000-000000000030', 'a1000000-0000-0000-0000-000000000005', 'Configure Follow-up Prompt (prompt_2)', 'Set the follow-up prompt for continuing conversations.', 3, 'prompt', 'prompt_2', 'Follow-up Prompt (prompt_2)'),
+    ('b1000000-0000-0000-0000-000000000031', 'a1000000-0000-0000-0000-000000000005', 'Configure Booking Prompt (prompt_3)', 'Set the prompt for steering conversations toward booking.', 4, 'prompt', 'prompt_3', 'Booking Prompt (prompt_3)'),
+    ('b1000000-0000-0000-0000-000000000032', 'a1000000-0000-0000-0000-000000000005', 'Configure Objection Handling (prompt_4)', 'Set the prompt for handling common objections.', 5, 'prompt', 'prompt_4', 'Objection Handling (prompt_4)'),
+    ('b1000000-0000-0000-0000-000000000033', 'a1000000-0000-0000-0000-000000000005', 'Configure Closing Prompt (prompt_5)', 'Set the closing and recap prompt.', 6, 'prompt', 'prompt_5', 'Closing Prompt (prompt_5)'),
+    ('b1000000-0000-0000-0000-000000000034', 'a1000000-0000-0000-0000-000000000005', 'Test Prompts with Sample Data', 'Run through a test conversation to verify prompt quality.', 7, NULL, NULL, NULL),
+    ('b1000000-0000-0000-0000-000000000035', 'a1000000-0000-0000-0000-000000000005', 'Finalize and Save All Prompts', 'Review all prompts and save the final versions.', 8, NULL, NULL, NULL)
 ON CONFLICT (id) DO UPDATE SET
     title = EXCLUDED.title,
     description = EXCLUDED.description,
     sort_order = EXCLUDED.sort_order,
     widget_type = EXCLUDED.widget_type,
+    widget_key = EXCLUDED.widget_key,
     widget_title = EXCLUDED.widget_title;
 
 -- ── Section 6: HighLevel Credentials (4 steps) ─────────────────────────────

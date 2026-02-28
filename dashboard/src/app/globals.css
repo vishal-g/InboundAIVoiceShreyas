@@ -124,4 +124,24 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Make all interactive elements use the pointer cursor */
+  button,
+  a,
+  label,
+  [role="button"],
+  [role="menuitem"],
+  [aria-haspopup="menu"],
+  [aria-haspopup="dialog"],
+  [aria-haspopup="true"],
+  [data-slot="dialog-close"],
+  [data-slot="dialog-trigger"],
+  svg.cursor-pointer,
+  select,
+  input[type="submit"],
+  input[type="button"],
+  input[type="checkbox"],
+  input[type="radio"] {
+    cursor: pointer;
+  }
 }

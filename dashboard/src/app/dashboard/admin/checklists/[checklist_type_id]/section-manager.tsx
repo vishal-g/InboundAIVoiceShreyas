@@ -410,7 +410,7 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
 
             {/* ── Section Dialog ──────────────────────────── */}
             <Dialog open={sectionDialogOpen} onOpenChange={setSectionDialogOpen}>
-                <DialogContent>
+                <DialogContent className="sm:max-w-lg">
                     <DialogHeader>
                         <DialogTitle>{editingSection ? 'Edit Section' : 'Add Section'}</DialogTitle>
                     </DialogHeader>
@@ -471,7 +471,7 @@ export default function ChecklistSectionManager({ checklistTypeId, initialSectio
 
             {/* ── Delete Confirmation ─────────────────────── */}
             <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-                <DialogContent>
+                <DialogContent className="sm:max-w-md">
                     <DialogHeader>
                         <DialogTitle>Delete {deleteTarget?.type === 'section' ? 'Section' : 'Step'}</DialogTitle>
                     </DialogHeader>

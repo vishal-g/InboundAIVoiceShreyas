@@ -7,6 +7,7 @@ import { CheckCircle2, ChevronDown, ChevronRight, ArrowLeft } from 'lucide-react
 import { toggleStepCompletion } from './actions'
 import type { SectionWithProgress } from './types'
 import { DynamicStepsWidget } from './widgets/dynamic-steps-widget'
+import { PromptEditorWidget } from './widgets/prompt-editor-widget'
 import { MultiStepProgress } from './multi-step-progress'
 import { QuizWidget } from './quiz-widget'
 
@@ -18,6 +19,7 @@ type Props = {
     subAccountId: string
     basePath: string
     credentials: Record<string, string>
+    prompts: Record<string, { description: string, content: string }>
 }
 
 export default function ChecklistGuideModal({
@@ -28,6 +30,7 @@ export default function ChecklistGuideModal({
     subAccountId,
     basePath,
     credentials,
+    prompts
 }: Props) {
     const [activeSectionId, setActiveSectionId] = useState(initialSectionId)
     const [activeStepId, setActiveStepId] = useState<string | null>(() => {
@@ -279,12 +282,23 @@ export default function ChecklistGuideModal({
                                         )
                                     )}
 
-                                    {activeStep.widget_config && !showQuiz && (
+                                    {activeStep.widget_config && !showQuiz && activeStep.widget_type !== 'prompt' && (
                                         <div className="mt-8 border-t pt-2">
                                             <DynamicStepsWidget
                                                 subAccountId={subAccountId}
                                                 config={activeStep.widget_config}
                                                 existingCredentials={credentials}
+                                            />
+                                        </div>
+                                    )}
+
+                                    {activeStep.widget_type === 'prompt' && !showQuiz && (
+                                        <div className="mt-8 border-t pt-2">
+                                            <PromptEditorWidget
+                                                subAccountId={subAccountId}
+                                                aiType={activeSection?.checklist_type_id?.includes('voice') ? 'voice' : 'text'}
+                                                promptName={activeStep.widget_title || activeStep.title}
+                                                existingPrompt={prompts[activeStep.widget_title || activeStep.title]}
                                             />
                                         </div>
                                     )}

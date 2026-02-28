@@ -85,13 +85,25 @@ export async function getChecklistData(
 
     const credentials = settingsData?.credentials || {}
 
+    // 7. Fetch existing prompts
+    const { data: promptsData } = await admin
+        .from('prompts')
+        .select('name, description, content')
+        .eq('sub_account_id', subAccountId)
+
+    const prompts: Record<string, { description: string, content: string }> = {}
+    promptsData?.forEach(p => {
+        prompts[p.name] = { description: p.description || '', content: p.content }
+    })
+
     return {
         checklistType: checklistType as ChecklistType,
         sections: enrichedSections,
         totalSteps,
         completedSteps,
         percentage: totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0,
-        credentials
+        credentials,
+        prompts
     }
 }
 

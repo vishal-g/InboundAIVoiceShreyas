@@ -100,6 +100,7 @@ export default function ChecklistSectionCards({ data, subAccountId, basePath }: 
                     subAccountId={subAccountId}
                     basePath={basePath}
                     credentials={data.credentials}
+                    prompts={data.prompts}
                 />
             )}
         </>

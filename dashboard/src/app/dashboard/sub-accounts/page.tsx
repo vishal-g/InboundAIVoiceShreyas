@@ -13,7 +13,14 @@ import { Button } from '@/components/ui/button'
 import { Settings, PhoneCall } from 'lucide-react'
 import { CreateSubAccountButton, SubAccountActions } from './sub-account-client'
 
-export default async function SubAccountsPage() {
+export default async function SubAccountsPage({
+    searchParams,
+}: {
+    searchParams: Promise<{ agency_id?: string }>
+}) {
+    const params = await searchParams
+    const agencyIdFilter = params.agency_id
+
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
@@ -35,9 +42,10 @@ export default async function SubAccountsPage() {
         .select('*, agencies(name), sub_account_settings(assigned_number, llm_model)')
         .order('name')
 
-    // Agency admins only see their own agency's sub-accounts
-    if (roleData?.role === 'agency_admin' && roleData?.agency_id) {
-        query = query.eq('agency_id', roleData.agency_id)
+    // Filter by agency: URL param takes priority, then role-based
+    const effectiveAgencyId = agencyIdFilter || roleData?.agency_id
+    if (effectiveAgencyId) {
+        query = query.eq('agency_id', effectiveAgencyId)
     }
 
     const { data: subAccounts } = await query

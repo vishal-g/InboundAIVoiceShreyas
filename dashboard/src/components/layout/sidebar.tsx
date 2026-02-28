@@ -74,13 +74,16 @@ export default function Sidebar({
     // show sub-account links when a sub-account is selected
     const isSubAccountView = !!selectedSubAccountId
 
+    // Agency context param for admin pages
+    const agencyParam = selectedAgencyId ? `?agency_id=${selectedAgencyId}` : ''
+
     const navLinks = [
-        { href: '/dashboard', icon: Home, label: 'Overview' },
+        { href: `/dashboard${agencyParam}`, icon: Home, label: 'Overview' },
         // Admin-level links — only when NOT viewing a specific sub-account
         ...(!isSubAccountView && (isPlatformAdmin || isAgencyAdmin)
             ? [
-                { href: '/dashboard/agencies', icon: Building2, label: 'Agencies' },
-                { href: '/dashboard/sub-accounts', icon: Users2, label: 'Sub-Accounts' },
+                { href: `/dashboard/agencies${agencyParam}`, icon: Building2, label: 'Agencies' },
+                { href: `/dashboard/sub-accounts${agencyParam}`, icon: Users2, label: 'Sub-Accounts' },
             ]
             : []),
         // Sub-account links — only when a sub-account IS selected

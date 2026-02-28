@@ -70,6 +70,7 @@ export async function savePrompt(_prevState: unknown, formData: FormData) {
     const name = formData.get('name') as string
     const description = formData.get('description') as string
     const content = formData.get('content') as string
+    const id = formData.get('id') as string || undefined
 
     if (!subAccountId || !aiType || !name || !content) {
         return { success: false, error: 'Missing required fields' }
@@ -91,17 +92,18 @@ export async function savePrompt(_prevState: unknown, formData: FormData) {
         return { success: false, error: 'Unauthorized access to sub-account' }
     }
 
-    // Upsert the prompt based on sub_account_id, ai_type and name
+    // Upsert the prompt
     const { error } = await admin
         .from('prompts')
         .upsert({
+            ...(id ? { id } : {}),
             sub_account_id: subAccountId,
             ai_type: aiType,
             name: name,
             description: description,
             content: content,
             updated_at: new Date().toISOString()
-        }, { onConflict: 'sub_account_id,ai_type,name' })
+        })
 
     if (error) {
         console.error('Failed to save prompt:', error)

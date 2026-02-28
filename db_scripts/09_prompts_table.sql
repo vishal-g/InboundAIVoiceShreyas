@@ -10,7 +10,8 @@ CREATE TABLE IF NOT EXISTS prompts (
     content TEXT NOT NULL,
     is_active BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE (sub_account_id, ai_type, name)
 );
 
 -- Enable RLS

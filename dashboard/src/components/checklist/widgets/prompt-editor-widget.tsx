@@ -14,6 +14,7 @@ type PromptEditorWidgetProps = {
     aiType: 'text' | 'voice'
     promptName: string
     existingPrompt?: {
+        id?: string
         description: string
         content: string
     }
@@ -40,7 +41,7 @@ export function PromptEditorWidget({
             <div className="flex items-center gap-2 border-b border-border bg-muted/40 px-5 py-3">
                 <span className="text-sm font-semibold tracking-wide text-foreground flex items-center gap-2">
                     <div className="w-1.5 h-1.5 rounded-full bg-primary/70" />
-                    Configure Prompt: {promptName}
+                    Configure Prompt
                 </span>
             </div>
 
@@ -48,7 +49,21 @@ export function PromptEditorWidget({
                 <form action={formAction} className="space-y-4">
                     <input type="hidden" name="sub_account_id" value={subAccountId} />
                     <input type="hidden" name="ai_type" value={aiType} />
-                    <input type="hidden" name="name" value={promptName} />
+                    <input type="hidden" name="id" value={existingPrompt?.id || ''} />
+
+                    <div className="space-y-2">
+                        <Label htmlFor="name" className="text-sm font-medium">
+                            Prompt Name (Title)
+                        </Label>
+                        <Input
+                            id="name"
+                            name="name"
+                            placeholder="e.g. Master System Prompt"
+                            defaultValue={promptName}
+                            className="bg-background font-medium"
+                            required
+                        />
+                    </div>
 
                     <div className="space-y-2">
                         <Label htmlFor="description" className="text-sm font-medium">
@@ -57,7 +72,7 @@ export function PromptEditorWidget({
                         <Input
                             id="description"
                             name="description"
-                            placeholder="e.g. Master system prompt for handling objections"
+                            placeholder="e.g. Handling common sales objections"
                             defaultValue={existingPrompt?.description || ''}
                             className="bg-background"
                         />

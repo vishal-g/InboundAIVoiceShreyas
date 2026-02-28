@@ -88,12 +88,12 @@ export async function getChecklistData(
     // 7. Fetch existing prompts
     const { data: promptsData } = await admin
         .from('prompts')
-        .select('name, description, content')
+        .select('id, name, description, content')
         .eq('sub_account_id', subAccountId)
 
-    const prompts: Record<string, { description: string, content: string }> = {}
+    const prompts: Record<string, { id: string, description: string, content: string }> = {}
     promptsData?.forEach(p => {
-        prompts[p.name] = { description: p.description || '', content: p.content }
+        prompts[p.name] = { id: p.id, description: p.description || '', content: p.content }
     })
 
     return {

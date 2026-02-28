@@ -97,5 +97,5 @@ export type ChecklistData = {
     completedSteps: number
     percentage: number
     credentials: Record<string, string>
-    prompts: Record<string, { description: string, content: string }>
+    prompts: Record<string, { id?: string, description: string, content: string }>
 }

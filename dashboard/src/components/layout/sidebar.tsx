@@ -70,16 +70,26 @@ export default function Sidebar({
     // Build nav links
     const activeSubId = selectedSubAccountId || filteredSubAccounts[0]?.id || 'demo'
 
+    // Context-aware nav: show admin links when in admin/agency view,
+    // show sub-account links when a sub-account is selected
+    const isSubAccountView = !!selectedSubAccountId
+
     const navLinks = [
         { href: '/dashboard', icon: Home, label: 'Overview' },
-        ...(isPlatformAdmin || isAgencyAdmin
+        // Admin-level links — only when NOT viewing a specific sub-account
+        ...(!isSubAccountView && (isPlatformAdmin || isAgencyAdmin)
             ? [
                 { href: '/dashboard/agencies', icon: Building2, label: 'Agencies' },
                 { href: '/dashboard/sub-accounts', icon: Users2, label: 'Sub-Accounts' },
             ]
             : []),
-        { href: `/dashboard/${activeSubId}/settings`, icon: Settings, label: 'AI Settings' },
-        { href: `/dashboard/${activeSubId}/logs`, icon: PhoneCall, label: 'Call Logs' },
+        // Sub-account links — only when a sub-account IS selected
+        ...(isSubAccountView
+            ? [
+                { href: `/dashboard/${activeSubId}/settings`, icon: Settings, label: 'AI Settings' },
+                { href: `/dashboard/${activeSubId}/logs`, icon: PhoneCall, label: 'Call Logs' },
+            ]
+            : []),
     ]
 
     const selectedAgencyName = agencies.find((a) => a.id === selectedAgencyId)?.name

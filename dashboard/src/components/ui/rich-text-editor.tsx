@@ -3,7 +3,7 @@
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
-import { Bold, Italic, Strikethrough, List, ListOrdered, Link as LinkIcon, Info, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { Bold, Italic, Strikethrough, List, ListOrdered, Link as LinkIcon, Info, CheckCircle2, AlertTriangle, Heading1, Heading2, Heading3 } from 'lucide-react'
 import { Toggle } from '@/components/ui/toggle'
 import { Callout } from './extensions/callout'
 import { useEffect, useState } from 'react'
@@ -29,7 +29,7 @@ export function RichTextEditor({ value, onChange }: RichTextEditorProps) {
         content: value,
         editorProps: {
             attributes: {
-                class: 'min-h-[150px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
+                class: 'min-h-[150px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 prose prose-sm dark:prose-invert max-w-none prose-p:leading-relaxed prose-ul:list-disc prose-ol:list-decimal prose-ul:ml-4 prose-ol:ml-4 focus:outline-none',
             },
         },
         onUpdate: ({ editor }) => {
@@ -98,6 +98,33 @@ export function RichTextEditor({ value, onChange }: RichTextEditorProps) {
                     aria-label="Toggle strikethrough"
                 >
                     <Strikethrough className="h-4 w-4" />
+                </Toggle>
+
+                <div className="w-px h-4 bg-border mx-1" />
+
+                <Toggle
+                    size="sm"
+                    pressed={editor.isActive('heading', { level: 1 })}
+                    onPressedChange={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+                    aria-label="Toggle heading 1"
+                >
+                    <Heading1 className="h-4 w-4" />
+                </Toggle>
+                <Toggle
+                    size="sm"
+                    pressed={editor.isActive('heading', { level: 2 })}
+                    onPressedChange={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+                    aria-label="Toggle heading 2"
+                >
+                    <Heading2 className="h-4 w-4" />
+                </Toggle>
+                <Toggle
+                    size="sm"
+                    pressed={editor.isActive('heading', { level: 3 })}
+                    onPressedChange={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+                    aria-label="Toggle heading 3"
+                >
+                    <Heading3 className="h-4 w-4" />
                 </Toggle>
 
                 <div className="w-px h-4 bg-border mx-1" />

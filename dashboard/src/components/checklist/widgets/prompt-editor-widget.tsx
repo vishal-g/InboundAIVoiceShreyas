@@ -60,10 +60,10 @@ export function PromptEditorWidget({
                         <Input
                             id="name"
                             name="name"
+                            key={`name-${existingPrompt?.name || ''}`}
                             placeholder="e.g. Master System Prompt"
                             defaultValue={existingPrompt?.name || ''}
                             className="bg-background font-medium"
-                            required
                         />
                     </div>
 
@@ -74,6 +74,7 @@ export function PromptEditorWidget({
                         <Input
                             id="description"
                             name="description"
+                            key={`desc-${existingPrompt?.description || ''}`}
                             placeholder="e.g. Handling common sales objections"
                             defaultValue={existingPrompt?.description || ''}
                             className="bg-background"
@@ -87,10 +88,10 @@ export function PromptEditorWidget({
                         <Textarea
                             id="content"
                             name="content"
+                            key={`content-${existingPrompt?.content || ''}`}
                             placeholder="Type your prompt instructions here..."
                             defaultValue={existingPrompt?.content || ''}
                             className="min-h-[250px] bg-background font-mono text-sm leading-relaxed"
-                            required
                         />
                     </div>
 

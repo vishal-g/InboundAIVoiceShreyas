@@ -75,11 +75,11 @@ export function DynamicStepsWidget({ subAccountId, config, existingCredentials }
                                     <Input
                                         id={field.key}
                                         name={field.key}
+                                        key={`${field.key}-${existingCredentials[field.key] || ''}`}
                                         type={displayType}
                                         placeholder={isConfigured ? '••••••••••••••••••••••••••••' : field.placeholder}
-                                        defaultValue={isConfigured ? existingCredentials[field.key] : ''}
-                                        required={field.required}
-                                        className={`pr-10 bg-background ${isConfigured ? 'font-mono text-muted-foreground bg-muted/30 focus-visible:ring-0 opacity-70 pointer-events-none' : ''
+                                        defaultValue={existingCredentials[field.key] || ''}
+                                        className={`pr-10 bg-background ${isConfigured ? 'border-green-200 focus-visible:ring-green-500/20' : ''
                                             }`}
                                     />
                                     {field.type === 'password' && (

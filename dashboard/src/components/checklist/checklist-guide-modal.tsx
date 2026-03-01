@@ -21,6 +21,7 @@ type Props = {
     basePath: string
     credentials: Record<string, string>
     prompts: Record<string, { id?: string, name: string, description: string, content: string }>
+    isInline?: boolean
 }
 
 export default function ChecklistGuideModal({
@@ -32,7 +33,8 @@ export default function ChecklistGuideModal({
     subAccountId,
     basePath,
     credentials,
-    prompts
+    prompts,
+    isInline = false
 }: Props) {
     const [activeSectionId, setActiveSectionId] = useState(initialSectionId)
     const [activeStepId, setActiveStepId] = useState<string | null>(() => {
@@ -54,6 +56,13 @@ export default function ChecklistGuideModal({
     const [currentSlideIndex, setCurrentSlideIndex] = useState(0)
     const [quizPassed, setQuizPassed] = useState(false)
     const [showQuiz, setShowQuiz] = useState(false)
+
+    // Sync localProgress when sections prop changes (e.g. after server revalidation)
+    useEffect(() => {
+        const map = new Map<string, boolean>()
+        sections.forEach(s => s.steps.forEach(step => map.set(step.id, step.is_done)))
+        setLocalProgress(map)
+    }, [sections])
 
     const prevOpenRef = React.useRef(open)
 
@@ -177,27 +186,26 @@ export default function ChecklistGuideModal({
         }
     }
 
-    return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-none w-[95vw] h-[90vh] p-0 gap-0 flex flex-col overflow-hidden">
-                <DialogTitle className="sr-only">{checklistType.title || 'Page View'}</DialogTitle>
-                {/* Header */}
-                <div className="px-6 py-4 border-b flex-shrink-0 flex items-center justify-between">
-                    <div>
-                        <h2 className="text-lg font-semibold flex items-center gap-2">
-                            <span>{checklistType.icon}</span>
-                            {activeSection?.title || checklistType.title}
-                        </h2>
-                        <p className="text-sm text-muted-foreground">
-                            {activeSection?.description || checklistType.description}
-                        </p>
-                    </div>
+    const content = (
+        <div className={`w-full h-full p-0 gap-0 flex flex-col overflow-hidden ${isInline ? 'border rounded-xl bg-card shadow-sm' : ''}`}>
+            {/* Header */}
+            <div className={`px-6 py-4 border-b flex-shrink-0 flex items-center justify-between ${isInline ? 'bg-muted/10' : ''}`}>
+                <div>
+                    <h2 className="text-lg font-semibold flex items-center gap-2">
+                        <span>{checklistType.icon}</span>
+                        {(isInline && checklistType.display_type === 'page') ? checklistType.title : (activeSection?.title || checklistType.title)}
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                        {(isInline && checklistType.display_type === 'page') ? checklistType.description : (activeSection?.description || checklistType.description)}
+                    </p>
                 </div>
+            </div>
 
-                {/* Body */}
-                <div className="flex flex-1 min-h-0">
-                    {/* Left sidebar */}
-                    <div className="w-80 border-r overflow-y-auto flex-shrink-0 bg-muted/30">
+            {/* Body */}
+            <div className="flex flex-1 min-h-0 bg-background">
+                {/* Left sidebar - Hidden in Inline mode */}
+                {!isInline && (
+                    <div className="w-80 border-r overflow-y-auto flex-shrink-0 bg-muted/40">
                         <div className="p-3 space-y-1">
                             {sections.map((section) => (
                                 <div key={section.id}>
@@ -246,81 +254,152 @@ export default function ChecklistGuideModal({
                             ))}
                         </div>
                     </div>
+                )}
 
-                    {/* Main content */}
-                    <div className="flex-1 flex flex-col min-w-0">
-                        <div className="flex-1 overflow-y-auto p-8">
-                            {activeStep ? (
-                                <div>
-                                    <h3 className="text-2xl font-bold tracking-wide mb-6 text-foreground">
-                                        {activeStep.title}
-                                    </h3>
+                {/* Main content */}
+                <div className="flex-1 flex flex-col min-w-0 bg-background">
+                    <div className="flex-1 overflow-y-auto p-8">
+                        {isInline ? (
+                            <div className="max-w-4xl mx-auto space-y-12 pb-12">
+                                {sections.map((section) => {
+                                    const isCompleted = section.percentage === 100
+                                    return (
+                                        <div
+                                            key={section.id}
+                                            className={`space-y-6 p-6 rounded-2xl border-2 transition-all duration-300 ${isCompleted
+                                                ? 'border-emerald-500/40 bg-emerald-50/20 dark:bg-emerald-500/5 shadow-sm shadow-emerald-500/10'
+                                                : 'border-slate-100 bg-background'
+                                                }`}
+                                        >
+                                            <div className="border-b pb-4 flex items-center justify-between">
+                                                <div>
+                                                    <h3 className="text-xl font-bold flex items-center gap-2 text-foreground">
+                                                        <span className="text-2xl">{section.icon || '📋'}</span>
+                                                        {section.title}
+                                                    </h3>
+                                                    <p className="text-sm text-muted-foreground mt-1">{section.description}</p>
+                                                </div>
+                                                {isCompleted && (
+                                                    <div className="flex items-center gap-2 bg-emerald-500 text-white px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider animate-in fade-in zoom-in duration-300 shadow-sm shadow-emerald-500/20">
+                                                        <CheckCircle2 className="w-4 h-4" />
+                                                        Completed
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="space-y-10">
+                                                {section.steps.map((step) => (
+                                                    <div key={step.id} className="space-y-4">
+                                                        <div className="flex items-center gap-2">
+                                                            <h4 className="text-lg font-semibold text-foreground underline decoration-violet-500/30 underline-offset-4">{step.title}</h4>
+                                                            {step.is_done && (
+                                                                <CheckCircle2 className="w-5 h-5 text-emerald-500 animate-in fade-in zoom-in duration-500" />
+                                                            )}
+                                                        </div>
+                                                        {step.description && (
+                                                            <div className="prose prose-sm max-w-none text-muted-foreground leading-relaxed prose-p:leading-relaxed prose-a:text-primary prose-a:underline prose-ul:list-disc prose-ol:list-decimal"
+                                                                dangerouslySetInnerHTML={{ __html: step.description }}
+                                                            />
+                                                        )}
 
-                                    {activeStep.multi_step_config?.slides && (
-                                        <MultiStepProgress
-                                            total={activeStep.multi_step_config.slides.length + (activeStep.quiz_config ? 1 : 0)}
-                                            current={showQuiz ? activeStep.multi_step_config.slides.length : currentSlideIndex}
-                                            onSelect={(i) => {
-                                                if (i < activeStep.multi_step_config!.slides.length) {
-                                                    setCurrentSlideIndex(i)
-                                                    setShowQuiz(false)
-                                                } else {
-                                                    setShowQuiz(true)
-                                                }
-                                            }}
+                                                        {step.widget_config && step.widget_type !== 'prompt' && (
+                                                            <div className="mt-4">
+                                                                <DynamicStepsWidget
+                                                                    subAccountId={subAccountId}
+                                                                    config={step.widget_config}
+                                                                    existingCredentials={credentials}
+                                                                />
+                                                            </div>
+                                                        )}
+
+                                                        {step.widget_type === 'prompt' && (
+                                                            <div className="mt-4">
+                                                                <PromptEditorWidget
+                                                                    subAccountId={subAccountId}
+                                                                    aiType={section.checklist_type_id?.includes('voice') ? 'voice' : 'text'}
+                                                                    promptKey={step.widget_key || ''}
+                                                                    existingPrompt={prompts[step.widget_key || ''] || { name: '', description: '', content: '' }}
+                                                                />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        ) : activeStep ? (
+                            <div>
+                                <h3 className="text-2xl font-bold tracking-wide mb-6 text-foreground">
+                                    {activeStep.title}
+                                </h3>
+
+                                {activeStep.multi_step_config?.slides && (
+                                    <MultiStepProgress
+                                        total={(activeStep.multi_step_config?.slides?.length || 0) + (activeStep.quiz_config ? 1 : 0)}
+                                        current={showQuiz ? (activeStep.multi_step_config?.slides?.length || 0) : currentSlideIndex}
+                                        onSelect={(i) => {
+                                            if (i < (activeStep.multi_step_config?.slides?.length || 0)) {
+                                                setCurrentSlideIndex(i)
+                                                setShowQuiz(false)
+                                            } else {
+                                                setShowQuiz(true)
+                                            }
+                                        }}
+                                    />
+                                )}
+
+                                {!showQuiz ? (
+                                    <div className="prose prose-base whitespace-pre-line max-w-none text-muted-foreground leading-relaxed prose-p:leading-relaxed prose-a:text-primary prose-a:underline prose-ul:list-disc prose-ol:list-decimal prose-ul:ml-4 prose-ol:ml-4">
+                                        {(activeStep.multi_step_config?.slides?.length ?? 0) > 0 ? (
+                                            <div dangerouslySetInnerHTML={{ __html: activeStep.multi_step_config?.slides?.[currentSlideIndex]?.content || '' }} />
+                                        ) : activeStep.description ? (
+                                            <div dangerouslySetInnerHTML={{ __html: activeStep.description }} />
+                                        ) : (
+                                            <p className="text-muted-foreground/60 italic">
+                                                No description provided for this step yet.
+                                            </p>
+                                        )}
+                                    </div>
+                                ) : (
+                                    activeStep.quiz_config && (
+                                        <QuizWidget
+                                            config={activeStep.quiz_config}
+                                            onComplete={setQuizPassed}
                                         />
-                                    )}
+                                    )
+                                )}
 
-                                    {!showQuiz ? (
-                                        <div className="prose prose-base whitespace-pre-line max-w-none text-muted-foreground leading-relaxed prose-p:leading-relaxed prose-a:text-primary prose-a:underline prose-ul:list-disc prose-ol:list-decimal prose-ul:ml-4 prose-ol:ml-4">
-                                            {activeStep.multi_step_config?.slides?.length > 0 ? (
-                                                <div dangerouslySetInnerHTML={{ __html: activeStep.multi_step_config.slides[currentSlideIndex]?.content || '' }} />
-                                            ) : activeStep.description ? (
-                                                <div dangerouslySetInnerHTML={{ __html: activeStep.description }} />
-                                            ) : (
-                                                <p className="text-muted-foreground/60 italic">
-                                                    No description provided for this step yet.
-                                                </p>
-                                            )}
-                                        </div>
-                                    ) : (
-                                        activeStep.quiz_config && (
-                                            <QuizWidget
-                                                config={activeStep.quiz_config}
-                                                onComplete={setQuizPassed}
-                                            />
-                                        )
-                                    )}
+                                {activeStep.widget_config && !showQuiz && activeStep.widget_type !== 'prompt' && (
+                                    <div className="mt-8 border-t pt-2">
+                                        <DynamicStepsWidget
+                                            subAccountId={subAccountId}
+                                            config={activeStep.widget_config}
+                                            existingCredentials={credentials}
+                                        />
+                                    </div>
+                                )}
 
-                                    {activeStep.widget_config && !showQuiz && activeStep.widget_type !== 'prompt' && (
-                                        <div className="mt-8 border-t pt-2">
-                                            <DynamicStepsWidget
-                                                subAccountId={subAccountId}
-                                                config={activeStep.widget_config}
-                                                existingCredentials={credentials}
-                                            />
-                                        </div>
-                                    )}
+                                {activeStep.widget_type === 'prompt' && !showQuiz && (
+                                    <div className="mt-8 border-t pt-2">
+                                        <PromptEditorWidget
+                                            subAccountId={subAccountId}
+                                            aiType={activeSection?.checklist_type_id?.includes('voice') ? 'voice' : 'text'}
+                                            promptKey={activeStep.widget_key || ''}
+                                            existingPrompt={prompts[activeStep.widget_key || ''] || { name: '', description: '', content: '' }}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="flex items-center justify-center h-full text-muted-foreground">
+                                Select a step from the sidebar
+                            </div>
+                        )}
+                    </div>
 
-                                    {activeStep.widget_type === 'prompt' && !showQuiz && (
-                                        <div className="mt-8 border-t pt-2">
-                                            <PromptEditorWidget
-                                                subAccountId={subAccountId}
-                                                aiType={activeSection?.checklist_type_id?.includes('voice') ? 'voice' : 'text'}
-                                                promptKey={activeStep.widget_key || ''}
-                                                existingPrompt={prompts[activeStep.widget_key || ''] || { name: '', description: '', content: '' }}
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-                            ) : (
-                                <div className="flex items-center justify-center h-full text-muted-foreground">
-                                    Select a step from the sidebar
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Bottom bar */}
+                    {/* Bottom bar - Hidden in Inline mode */}
+                    {!isInline && (
                         <div className="border-t px-6 py-4 flex items-center justify-between flex-shrink-0 bg-card">
                             <Button
                                 variant="outline"
@@ -340,7 +419,7 @@ export default function ChecklistGuideModal({
                                         <Button
                                             size="sm"
                                             onClick={handleToggleDone}
-                                            disabled={!activeStepId || isPending || (activeStep?.quiz_config && !quizPassed && !isStepDone)}
+                                            disabled={!activeStepId || isPending || !!(activeStep?.quiz_config && !quizPassed && !isStepDone)}
                                             className={`gap-2 min-w-[120px] text-white border-0 ${isStepDone
                                                 ? 'bg-slate-500 hover:bg-slate-600'
                                                 : 'bg-violet-500 hover:bg-violet-600'
@@ -353,8 +432,25 @@ export default function ChecklistGuideModal({
                                 )}
                             </div>
                         </div>
-                    </div>
+                    )}
                 </div>
+            </div>
+        </div>
+    )
+
+    if (isInline) {
+        return (
+            <div className="h-[calc(100vh-210px)] min-h-[600px]">
+                {content}
+            </div>
+        )
+    }
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-none w-[95vw] h-[90vh] p-0 gap-0 overflow-hidden">
+                <DialogTitle className="sr-only">{checklistType.title || 'Page View'}</DialogTitle>
+                {content}
             </DialogContent>
         </Dialog>
     )

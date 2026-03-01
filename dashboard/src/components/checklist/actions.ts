@@ -96,12 +96,37 @@ export async function getChecklistData(
         prompts[p.prompt_key] = { id: p.id, name: p.name, description: p.description || '', content: p.content }
     })
 
+    // 8. For 'page' type checklists, auto-calculate is_done based on existing data
+    if (checklistType.display_type === 'page') {
+        enrichedSections.forEach(section => {
+            section.steps.forEach(step => {
+                let inferredDone = false
+                if (step.widget_type === 'credentials' && step.widget_config?.fields) {
+                    inferredDone = step.widget_config.fields.every(f => !!credentials[f.key])
+                } else if (step.widget_type === 'prompt' && step.widget_key) {
+                    inferredDone = !!prompts[step.widget_key]
+                } else {
+                    inferredDone = progressMap.get(step.id) || false
+                }
+                step.is_done = inferredDone
+            })
+
+            section.completedSteps = section.steps.filter(s => s.is_done).length
+            section.percentage = section.totalSteps > 0
+                ? Math.round((section.completedSteps / section.totalSteps) * 100)
+                : 0
+        })
+    }
+
+    const finalTotalSteps = enrichedSections.reduce((sum, s) => sum + s.totalSteps, 0)
+    const finalCompletedSteps = enrichedSections.reduce((sum, s) => sum + s.completedSteps, 0)
+
     return {
         checklistType: checklistType as ChecklistType,
         sections: enrichedSections,
-        totalSteps,
-        completedSteps,
-        percentage: totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0,
+        totalSteps: finalTotalSteps,
+        completedSteps: finalCompletedSteps,
+        percentage: finalTotalSteps > 0 ? Math.round((finalCompletedSteps / finalTotalSteps) * 100) : 0,
         credentials,
         prompts
     }

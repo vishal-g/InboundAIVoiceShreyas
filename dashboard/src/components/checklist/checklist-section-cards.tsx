@@ -47,6 +47,23 @@ export default function ChecklistSectionCards({ data, subAccountId, basePath }: 
         setIsModalOpen(true)
     }
 
+    if (data.checklistType.display_type === 'page') {
+        return (
+            <ChecklistGuideModal
+                open={true}
+                onOpenChange={() => { }}
+                checklistType={data.checklistType}
+                sections={data.sections}
+                initialSectionId={data.sections[0]?.id || ''}
+                subAccountId={subAccountId}
+                basePath={basePath}
+                credentials={data.credentials}
+                prompts={data.prompts}
+                isInline={true}
+            />
+        )
+    }
+
     return (
         <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">

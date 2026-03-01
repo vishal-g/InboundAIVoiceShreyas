@@ -40,7 +40,7 @@ export async function saveDynamicCredentials(_prevState: unknown, formData: Form
     // 3. Extract all form fields (except the hidden subAccountId)
     const entries = Array.from(formData.entries())
     for (const [key, value] of entries) {
-        if (key !== 'subAccountId' && value) {
+        if (key !== 'subAccountId') {
             newCredentials[key] = value.toString().trim()
         }
     }

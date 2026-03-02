@@ -11,6 +11,7 @@ ALTER TABLE call_logs ADD COLUMN IF NOT EXISTS call_day_of_week TEXT   DEFAULT N
 ALTER TABLE call_logs ADD COLUMN IF NOT EXISTS was_booked      BOOLEAN DEFAULT FALSE;
 ALTER TABLE call_logs ADD COLUMN IF NOT EXISTS interrupt_count INTEGER DEFAULT 0;
 ALTER TABLE call_logs ADD COLUMN IF NOT EXISTS audio_codec     TEXT    DEFAULT NULL;
+ALTER TABLE call_logs ADD COLUMN IF NOT EXISTS caller_name     TEXT    DEFAULT NULL;
 
 -- 2. Real-time transcript table (#33)
 CREATE TABLE IF NOT EXISTS call_transcripts (
@@ -26,9 +27,11 @@ CREATE INDEX IF NOT EXISTS idx_call_transcripts_phone ON call_transcripts (phone
 
 -- Enable RLS on call_transcripts
 ALTER TABLE call_transcripts ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "Allow anon insert transcripts" ON call_transcripts
+DROP POLICY IF EXISTS "Allow anon insert transcripts" ON call_transcripts;
+CREATE POLICY "Allow anon insert transcripts" ON call_transcripts
     FOR INSERT TO anon WITH CHECK (true);
-CREATE POLICY IF NOT EXISTS "Allow anon select transcripts" ON call_transcripts
+DROP POLICY IF EXISTS "Allow anon select transcripts" ON call_transcripts;
+CREATE POLICY "Allow anon select transcripts" ON call_transcripts
     FOR SELECT TO anon USING (true);
 
 -- 3. Active calls table for real-time monitoring (#38)
@@ -41,7 +44,8 @@ CREATE TABLE IF NOT EXISTS active_calls (
     last_updated TIMESTAMPTZ DEFAULT NOW()
 );
 ALTER TABLE active_calls ENABLE ROW LEVEL SECURITY;
-CREATE POLICY IF NOT EXISTS "Allow anon upsert active_calls" ON active_calls
+DROP POLICY IF EXISTS "Allow anon upsert active_calls" ON active_calls;
+CREATE POLICY "Allow anon upsert active_calls" ON active_calls
     FOR ALL TO anon USING (true) WITH CHECK (true);
 
 -- ══════════════════════════════════════════════════════════════════════════════

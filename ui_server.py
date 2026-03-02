@@ -1,5 +1,5 @@
 """
-ui_server.py — FastAPI dashboard and API server for RapidX AI Voice Agent.
+ui_server.py — FastAPI dashboard and API server for Spinning Top AI Voice Agent.
 
 Provides:
 - Dashboard UI (loaded from templates/dashboard.html)
@@ -31,7 +31,7 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ui-server")
 
-app = FastAPI(title="RapidX AI Dashboard")
+app = FastAPI(title="Spinning Top AI Dashboard")
 
 TEMPLATE_DIR = Path(__file__).parent / "templates"
 

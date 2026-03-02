@@ -61,7 +61,7 @@ BEGIN
     IF roofing_sub_id IS NOT NULL THEN
         INSERT INTO public.call_logs (phone_number, duration_seconds, transcript, summary, sub_account_id, caller_name, sentiment, was_booked, created_at) VALUES
         ('+919876543210', 185,
-        'Agent: Namaste! This is Aryan from RapidX AI. How can I help you today?' || chr(10) || 'Caller: Hi, I run a roofing company in Delhi. We get a lot of inbound calls.' || chr(10) || 'Agent: Our AI voice agents can handle inbound calls 24/7 and book appointments.' || chr(10) || 'Caller: How much does it cost?' || chr(10) || 'Agent: Plans start at 15,000/month. Want to schedule a demo?' || chr(10) || 'Caller: Sure, Thursday at 3pm.' || chr(10) || 'Agent: Booked for Thursday 3 PM!',
+        'Agent: Namaste! This is Aryan from Spinning Top AI. How can I help you today?' || chr(10) || 'Caller: Hi, I run a roofing company in Delhi. We get a lot of inbound calls.' || chr(10) || 'Agent: Our AI voice agents can handle inbound calls 24/7 and book appointments.' || chr(10) || 'Caller: How much does it cost?' || chr(10) || 'Agent: Plans start at 15,000/month. Want to schedule a demo?' || chr(10) || 'Caller: Sure, Thursday at 3pm.' || chr(10) || 'Agent: Booked for Thursday 3 PM!',
         'Demo booked — Thursday 3PM. Roofing company owner from Delhi, interested in AI voice for lead qualification.',
         roofing_sub_id, 'Rahul Sharma', 'positive', true, now() - interval '2 hours'),
 
@@ -71,7 +71,7 @@ BEGIN
         roofing_sub_id, 'Dr. Mehta', 'neutral', false, now() - interval '5 hours'),
 
         ('+918765432109', 45,
-        'Agent: Namaste! This is Aryan from RapidX AI.' || chr(10) || 'Caller: Sorry, wrong number.' || chr(10) || 'Agent: No worries! Have a great day.',
+        'Agent: Namaste! This is Aryan from Spinning Top AI.' || chr(10) || 'Caller: Sorry, wrong number.' || chr(10) || 'Agent: No worries! Have a great day.',
         'Wrong number — call ended quickly.',
         roofing_sub_id, NULL, 'neutral', false, now() - interval '1 day'),
 

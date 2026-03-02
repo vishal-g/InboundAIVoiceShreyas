@@ -19,7 +19,7 @@ BEGIN
     VALUES
     (
         '+919876543210', 185,
-        'Agent: Namaste! This is Aryan from RapidX AI. How can I help you today?' || chr(10) ||
+        'Agent: Namaste! This is Aryan from Spinning Top AI. How can I help you today?' || chr(10) ||
         'Caller: Hi, I run a roofing company in Delhi. We get a lot of inbound calls and can''t handle them all.' || chr(10) ||
         'Agent: That''s exactly what we solve! Our AI voice agents can handle inbound calls 24/7, qualify leads, and book appointments automatically.' || chr(10) ||
         'Caller: That sounds great. How much does it cost?' || chr(10) ||
@@ -35,7 +35,7 @@ BEGIN
     ),
     (
         '+919123456789', 92,
-        'Agent: Hello! This is Aryan from RapidX AI. May I ask what kind of business you run?' || chr(10) ||
+        'Agent: Hello! This is Aryan from Spinning Top AI. May I ask what kind of business you run?' || chr(10) ||
         'Caller: I have a dental clinic chain. We need help with appointment reminders.' || chr(10) ||
         'Agent: We can definitely help — our AI handles appointment reminders, follow-ups, and even rebooking missed appointments.' || chr(10) ||
         'Caller: Interesting. Can you send me more details on email?' || chr(10) ||
@@ -51,7 +51,7 @@ BEGIN
     ),
     (
         '+918765432109', 45,
-        'Agent: Namaste! This is Aryan from RapidX AI, we help businesses automate with AI. How can I help?' || chr(10) ||
+        'Agent: Namaste! This is Aryan from Spinning Top AI, we help businesses automate with AI. How can I help?' || chr(10) ||
         'Caller: Sorry, wrong number.' || chr(10) ||
         'Agent: No worries at all! Have a great day.',
         'Wrong number — call ended quickly.',
@@ -63,7 +63,7 @@ BEGIN
     ),
     (
         '+917654321098', 210,
-        'Agent: Hello! This is Aryan from RapidX AI. How are you doing today?' || chr(10) ||
+        'Agent: Hello! This is Aryan from Spinning Top AI. How are you doing today?' || chr(10) ||
         'Caller: Hi Aryan, my name is Priya. I saw your ad about WhatsApp automation.' || chr(10) ||
         'Agent: Great to hear, Priya! Yes, we build AI-powered WhatsApp chatbots that handle customer queries, send bulk campaigns, and qualify leads automatically.' || chr(10) ||
         'Caller: We run an e-commerce store and get hundreds of WhatsApp messages daily. Can your AI handle order status queries?' || chr(10) ||

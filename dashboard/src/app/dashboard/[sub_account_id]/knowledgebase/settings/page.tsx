@@ -1,14 +1,17 @@
 import { createAdminClient } from '@/utils/supabase/admin'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import KBSettingsForm from './settings-form'
 
 type Props = {
     params: Promise<{ sub_account_id: string }>
+    searchParams: Promise<{ tab?: string }>
 }
 
-export default async function KnowledgebaseSettingsPage({ params }: Props) {
+export default async function KnowledgebaseSettingsPage({ params, searchParams }: Props) {
     const { sub_account_id } = await params
+    const { tab = 'rag' } = await searchParams
     const supabase = await createClient()
 
     // Auth check
@@ -39,6 +42,12 @@ export default async function KnowledgebaseSettingsPage({ params }: Props) {
         }
     }
 
+    const navItems = [
+        { id: 'rag', label: 'RAG Configuration' },
+        { id: 'fine-tuning', label: 'Advanced Fine-tuning' },
+        { id: 'retention', label: 'Data Retention' }
+    ]
+
     return (
         <div className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
             <div className="mx-auto grid w-full max-w-6xl gap-2">
@@ -50,12 +59,25 @@ export default async function KnowledgebaseSettingsPage({ params }: Props) {
 
             <div className="mx-auto grid w-full max-w-6xl items-start gap-6 md:grid-cols-[180px_1fr] lg:grid-cols-[250px_1fr]">
                 <nav className="grid gap-4 text-sm text-muted-foreground">
-                    <span className="font-semibold text-primary underline underline-offset-4">RAG Configuration</span>
-                    <span className="cursor-not-allowed opacity-50">Advanced Fine-tuning</span>
-                    <span className="cursor-not-allowed opacity-50">Data Retention</span>
+                    {navItems.map((item) => (
+                        <Link
+                            key={item.id}
+                            href={`?tab=${item.id}`}
+                            className={`transition-colors hover:text-primary ${tab === item.id
+                                    ? "font-semibold text-primary underline underline-offset-4"
+                                    : ""
+                                }`}
+                        >
+                            {item.label}
+                        </Link>
+                    ))}
                 </nav>
                 <div className="grid gap-6">
-                    <KBSettingsForm subAccountId={sub_account_id} settings={settings} />
+                    <KBSettingsForm
+                        subAccountId={sub_account_id}
+                        settings={settings}
+                        activeTab={tab}
+                    />
                 </div>
             </div>
         </div>

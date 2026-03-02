@@ -1,4 +1,4 @@
-# ARCHITECTURE.md — RapidX AI Voice Agent System Overview
+# ARCHITECTURE.md — Spinning Top AI Voice Agent System Overview
 
 ## Module Map
 

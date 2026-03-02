@@ -1,4 +1,4 @@
-# 🎙️ RapidX AI Voice Agent
+# 🎙️ Spinning Top AI Voice Agent
 
 A complete, production-ready AI voice agent solution supporting both **inbound** and **outbound** telephony via LiveKit SIP trunks, complete with a web dashboard for configuration and analytics.
 

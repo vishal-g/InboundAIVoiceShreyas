@@ -53,7 +53,7 @@ class AppSettings(BaseSettings):
     stt_min_endpointing_delay: float = 0.05
     max_turns: int = 25
     first_line: str = (
-        "Namaste! This is Aryan from RapidX AI — we help businesses automate "
+        "Namaste! This is Aryan from Spinning Top AI — we help businesses automate "
         "with AI. Hmm, may I ask what kind of business you run?"
     )
     agent_instructions: str = ""

@@ -1,5 +1,5 @@
 """
-agent.py — Main entry point for the RapidX AI Voice Agent.
+agent.py — Main entry point for the Spinning Top AI Voice Agent.
 
 Registers a single worker with LiveKit that routes to inbound or outbound
 agent based on dispatch metadata. Both agent types share the same

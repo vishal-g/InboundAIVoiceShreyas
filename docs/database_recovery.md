@@ -1,6 +1,6 @@
 # Database Recovery Guide
 
-This document describes how to restore the local Supabase database for the RapidX AI project from a full SQL backup.
+This document describes how to restore the local Supabase database for the Spinning Top AI project from a full SQL backup.
 
 ## Prerequisites
 - Docker must be running.

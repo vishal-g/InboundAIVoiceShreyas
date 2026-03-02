@@ -79,7 +79,7 @@ class OutboundAssistant(Agent):
             "first_line",
             self._first_line
             or (
-                "Hi! This is Aryan calling from RapidX AI. We help businesses "
+                "Hi! This is Aryan calling from Spinning Top AI. We help businesses "
                 "automate their operations with AI — is this a good time to chat?"
             ),
         )

@@ -78,7 +78,7 @@ class InboundAssistant(Agent):
             "first_line",
             self._first_line
             or (
-                "Namaste! This is Aryan from RapidX AI — we help businesses "
+                "Namaste! This is Aryan from Spinning Top AI — we help businesses "
                 "automate with AI. Hmm, may I ask what kind of business you run?"
             ),
         )

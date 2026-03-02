@@ -80,3 +80,17 @@ Go to the **Outbound Calls** tab in the dashboard to dispatch the agent to call 
 
 ### Inbound Calling (SIP)
 To receive calls from a real phone number, you need to configure a SIP Trunk (e.g., using Vobiz) in your LiveKit Cloud project and route it to the agent. See the docs in the `docs/` folder for detailed SIP setup instructions.
+
+---
+
+## 🛠️ Database Maintenance
+
+### Backup & Recovery
+To restore the local Supabase database from the latest verified starting point:
+
+```bash
+# Restore from the 2026-03-02 full backup
+docker exec -i supabase_db_InboundAIVoiceShreyas psql -U postgres < backups/supabase_full_backup_20260302.sql
+```
+
+For more details on database management, see [Database Recovery Guide](docs/database_recovery.md).
